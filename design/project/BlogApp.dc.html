@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #d5d3ce; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  [contenteditable]:focus { outline: none; }
+  [contenteditable][data-ph]:empty:before,
+  [contenteditable][data-ph]:not(:focus):has(> .sc-interp:empty):before { content: attr(data-ph); color: #c2c0b8; pointer-events: none; }
+  @keyframes appfade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes titlecycle {
+    0%, 9%     { transform: translateY(0); }
+    14%, 23%   { transform: translateY(-1.2em); }
+    28%, 37%   { transform: translateY(-2.4em); }
+    42%, 51%   { transform: translateY(-3.6em); }
+    56%, 65%   { transform: translateY(-4.8em); }
+    70%, 79%   { transform: translateY(-6em); }
+    84%, 93%   { transform: translateY(-7.2em); }
+    100%       { transform: translateY(-8.4em); }
+  }
+</style>
+</helmet>
+<div style="height:100%;width:100%;display:flex;flex-direction:column;background:#ffffff;color:#0e0e0e;font-family:'Pretendard',sans-serif;overflow:hidden;position:relative">
+
+  <!-- ============ DESKTOP TOP NAV ============ -->
+  <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+    <header style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:62px;border-bottom:1px solid #e8e7e3;background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);z-index:20">
+      <button data-screen="home" onClick="{{ go }}" style="display:flex;align-items:center;gap:10px;border:none;background:none;cursor:pointer;padding:0">
+        <span style="width:26px;height:26px;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;border-radius:2px">나</span>
+        <span style="font-weight:700;font-size:16px;letter-spacing:-0.02em">나누다 <span style="color:#9a988f;font-weight:400;font-size:13px">nanuda</span></span>
+      </button>
+      <nav style="display:flex;align-items:center;gap:1px">
+        <button data-screen="home" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">홈<sc-if value="{{ navHome }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="daily" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">일상<sc-if value="{{ navDaily }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="info" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">정보<sc-if value="{{ navInfo }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="art" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">예술<sc-if value="{{ navArt }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="quote" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">글귀<sc-if value="{{ navQuote }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="archive" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">아카이브<sc-if value="{{ navArchive }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="about" onClick="{{ go }}" style="position:relative;border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#0e0e0e;padding:8px 11px">소개<sc-if value="{{ navAbout }}"><span style="position:absolute;left:11px;right:11px;bottom:2px;height:2px;background:#0e0e0e"></span></sc-if></button>
+        <button data-screen="editor" onClick="{{ go }}" style="margin-left:8px;border:1px solid #0e0e0e;background:#0e0e0e;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:2px;white-space:nowrap;flex:none">글쓰기</button>
+        <sc-if value="{{ notLoggedIn }}"><button data-screen="login" onClick="{{ go }}" style="margin-left:8px;border:1px solid #e0ded8;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;color:#0e0e0e;padding:8px 14px;border-radius:2px">로그인</button></sc-if>
+        <sc-if value="{{ loggedIn }}">
+          <button data-menu="profile" onClick="{{ toggleProfile }}" style="margin-left:12px;border:none;cursor:pointer;padding:0;width:32px;height:32px;border-radius:50%;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">이</button>
+        </sc-if>
+      </nav>
+    </header>
+    <sc-if value="{{ profileOpen }}">
+      <div style="position:absolute;top:56px;right:24px;z-index:40;width:220px;border:1px solid #e6e4de;background:#fff;border-radius:8px;box-shadow:0 18px 40px -16px rgba(0,0,0,0.3);padding:8px">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 8px 12px;border-bottom:1px solid #f0eee9">
+          <span style="width:38px;height:38px;border-radius:50%;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">이</span>
+          <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px;font-weight:600">이든</span><span style="font-size:12px;color:#8a887f">eden@nanuda.blog</span></span>
+        </div>
+        <button data-screen="editor" onClick="{{ go }}" style="display:block;width:100%;text-align:left;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13.5px;color:#0e0e0e;padding:9px 8px;border-radius:5px" style-hover="background:#f4f2ee">내 글 쓰기</button>
+        <button data-screen="archive" onClick="{{ go }}" style="display:block;width:100%;text-align:left;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13.5px;color:#0e0e0e;padding:9px 8px;border-radius:5px" style-hover="background:#f4f2ee">내 기록 보기</button>
+        <button onClick="{{ doLogout }}" style="display:block;width:100%;text-align:left;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13.5px;color:#b64a3f;padding:9px 8px;border-radius:5px" style-hover="background:#f7ecea">로그아웃</button>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <!-- ============ MOBILE TOP HEADER ============ -->
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}">
+    <header style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:52px;border-bottom:1px solid #e8e7e3;background:#fff;z-index:20">
+      <button data-screen="home" onClick="{{ go }}" style="display:flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;padding:0">
+        <span style="width:24px;height:24px;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border-radius:2px">나</span>
+        <span style="font-weight:700;font-size:15px;letter-spacing:-0.02em">나누다</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:2px">
+        <button data-screen="archive" onClick="{{ go }}" style="border:none;background:none;cursor:pointer;padding:6px;color:#0e0e0e" aria-label="검색">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        </button>
+        <button data-screen="editor" onClick="{{ go }}" style="border:none;background:none;cursor:pointer;padding:6px;color:#0e0e0e" aria-label="글쓰기">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+        </button>
+        <sc-if value="{{ notLoggedIn }}"><button data-screen="login" onClick="{{ go }}" style="border:none;background:none;cursor:pointer;padding:6px;color:#0e0e0e" aria-label="로그인">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5v-.5a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v.5"></path></svg>
+        </button></sc-if>
+        <sc-if value="{{ loggedIn }}"><span style="margin-left:2px;width:27px;height:27px;border-radius:50%;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">이</span></sc-if>
+      </div>
+    </header>
+  </sc-if>
+
+  <!-- ============ SCROLL BODY ============ -->
+  <main style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#ffffff">
+    <div key="{{ screen }}" style="animation:appfade .35s ease both">
+
+    <!-- ===== HOME ===== -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:64px 24px 40px;max-width:1120px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(32px,5vw,60px);line-height:1.2;letter-spacing:-0.035em;margin:0 0 22px">
+          우리의&nbsp;<span style="display:inline-flex;position:relative;height:1.2em;overflow:hidden;vertical-align:bottom">
+            <span style="display:flex;flex-direction:column;animation:titlecycle 11s cubic-bezier(0.72,0,0.24,1) infinite">
+              <span style="height:1.2em;display:flex;align-items:center">일상을</span>
+              <span style="height:1.2em;display:flex;align-items:center">기록을</span>
+              <span style="height:1.2em;display:flex;align-items:center">오늘을</span>
+              <span style="height:1.2em;display:flex;align-items:center">명언을</span>
+              <span style="height:1.2em;display:flex;align-items:center">기술을</span>
+              <span style="height:1.2em;display:flex;align-items:center">지식을</span>
+              <span style="height:1.2em;display:flex;align-items:center">예술을</span>
+              <span style="height:1.2em;display:flex;align-items:center">일상을</span>
+            </span>
+          </span>&nbsp;나누는 공간
+        </h1>
+        <p style="font-size:16px;line-height:1.7;color:#54524c;max-width:54ch;margin:0">형식에 얽매이지 않고, 담고 싶은 것을 담습니다. 사진과 글, 코드와 회로, 벽에 걸린 한 점, 그리고 마음에 남은 한 문장까지.</p>
+      </section>
+
+      <section style="padding:8px 24px;max-width:1120px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px">
+          <button data-screen="daily" onClick="{{ go }}" style="text-align:left;border:1px solid #e8e7e3;background:#faf9f7;cursor:pointer;padding:24px 22px;border-radius:3px;font-family:inherit;display:flex;flex-direction:column;min-height:210px;color:#0e0e0e">
+            <span style="font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1">일상</span>
+            <span style="font-size:13.5px;color:#6b695f;margin-top:12px;line-height:1.6">사진과 글에 집중한, 조용한 기록의 방.</span>
+            <span style="margin-top:auto;font-size:12.5px;color:#0e0e0e;padding-top:20px">들어가기 →</span>
+          </button>
+          <button data-screen="info" onClick="{{ go }}" style="text-align:left;border:1px solid #1c1c1c;background:#141414;color:#f2f2f2;cursor:pointer;padding:24px 22px;border-radius:3px;font-family:inherit;display:flex;flex-direction:column;min-height:210px">
+            <span style="font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1">정보</span>
+            <span style="font-size:13px;color:#9c9c9c;margin-top:12px;line-height:1.6;font-family:'JetBrains Mono',monospace">code · 회로 · 수식</span>
+            <span style="margin-top:auto;font-size:12.5px;color:#f2f2f2;padding-top:20px;font-family:'JetBrains Mono',monospace">enter →</span>
+          </button>
+          <button data-screen="art" onClick="{{ go }}" style="text-align:left;border:1px solid #e8e7e3;background:#f4f2ee;cursor:pointer;padding:24px 22px;border-radius:3px;font-family:inherit;display:flex;flex-direction:column;min-height:210px;color:#0e0e0e">
+            <span style="align-self:center;width:48px;height:60px;background:#fff;border:1px solid #cfcdc6;box-shadow:0 6px 16px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span style="width:30px;height:44px;background:repeating-linear-gradient(45deg,#e7e5e0 0 6px,#f0eee9 6px 12px)"></span></span>
+            <span style="font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1">예술</span>
+            <span style="font-size:13.5px;color:#6b695f;margin-top:10px;line-height:1.6">벽에 걸린 한 점, 전시장의 방.</span>
+          </button>
+          <button data-screen="quote" onClick="{{ go }}" style="text-align:left;border:1px solid #e8e7e3;background:#faf9f7;cursor:pointer;padding:24px 22px;border-radius:3px;font-family:inherit;display:flex;flex-direction:column;min-height:210px;color:#0e0e0e">
+            <span style="font-size:40px;line-height:0.7;color:#c9c5bc">“</span>
+            <span style="font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1;margin-top:8px">글귀</span>
+            <span style="font-size:13.5px;color:#6b695f;margin-top:10px;line-height:1.6">마음에 남은 문장, 카드 한 장으로.</span>
+          </button>
+        </div>
+      </section>
+
+      <section style="padding:44px 24px 32px;max-width:1120px;margin:0 auto">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #e8e7e3;padding-bottom:14px;margin-bottom:6px">
+          <h2 style="font-size:20px;font-weight:700;letter-spacing:-0.02em;margin:0">최근 기록</h2>
+          <button data-screen="archive" onClick="{{ go }}" style="border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;color:#9a988f">전체 보기 →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0 24px">
+          <sc-for list="{{ recentPosts }}" as="post" hint-placeholder-count="4">
+            <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="text-align:left;border:none;border-top:1px solid #eeece8;background:none;cursor:pointer;font-family:inherit;padding:18px 0;display:flex;flex-direction:column;gap:7px;color:#0e0e0e">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.01em;line-height:1.3">{{ post.title }}</span>
+              <span style="font-size:12.5px;color:#77756c;line-height:1.55">{{ post.excerpt }}</span>
+              <span style="font-size:11.5px;color:#b0aea6;margin-top:2px">{{ post.catLabel }} · {{ post.date }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== DAILY ===== -->
+    <sc-if value="{{ isDaily }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:56px 24px 24px;max-width:1000px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(32px,4.6vw,48px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 14px">일상</h1>
+        <p style="font-size:15px;color:#6b695f;margin:0;max-width:46ch;line-height:1.6">사진과 짧은 글로 남기는 하루의 조각들.</p>
+      </section>
+      <section style="padding:16px 24px 44px;max-width:1000px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:30px">
+          <sc-for list="{{ dailyPosts }}" as="post" hint-placeholder-count="3">
+            <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="text-align:left;border:none;background:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:12px;color:#0e0e0e">
+              <span style="width:100%;aspect-ratio:4/3;background:repeating-linear-gradient(45deg,#ecebe6 0 10px,#f4f3ef 10px 20px);border:1px solid #e5e3de;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#adaba2">{{ post.ph }}</span>
+              <span style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:19px;font-weight:600;letter-spacing:-0.01em;line-height:1.25">{{ post.title }}</span>
+                <span style="font-size:13px;color:#77756c;line-height:1.55">{{ post.excerpt }}</span>
+                <span style="font-size:11.5px;color:#b0aea6;margin-top:2px">{{ post.date }} · {{ post.read }}</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== INFO (velog-style) ===== -->
+    <sc-if value="{{ isInfo }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:56px 24px 24px;max-width:860px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(30px,4.4vw,46px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 14px">정보</h1>
+        <p style="font-size:15px;color:#6b695f;margin:0;max-width:52ch;line-height:1.6">코드 · 회로 · 수식, 그리고 자동 목차까지. 배운 것을 정리하는 방.</p>
+      </section>
+      <section style="padding:14px 24px 44px;max-width:860px;margin:0 auto;display:flex;flex-direction:column">
+        <sc-for list="{{ infoPosts }}" as="post" hint-placeholder-count="3">
+          <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="text-align:left;border:none;border-top:1px solid #e8e7e3;background:none;cursor:pointer;font-family:inherit;padding:26px 0;display:flex;flex-direction:column;gap:10px;color:#0e0e0e">
+            <span style="font-size:22px;font-weight:700;line-height:1.25;letter-spacing:-0.02em">{{ post.title }}</span>
+            <span style="font-size:14px;color:#6b695f;line-height:1.6;max-width:60ch">{{ post.excerpt }}</span>
+            <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px">
+              <sc-for list="{{ post.tags }}" as="tag" hint-placeholder-count="2">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#54524c;background:#f2f0ec;border:1px solid #e5e3de;padding:3px 8px;border-radius:2px">#{{ tag }}</span>
+              </sc-for>
+              <span style="font-size:11.5px;color:#b0aea6;margin-left:4px">{{ post.date }} · {{ post.read }}</span>
+            </span>
+          </button>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <!-- ===== ART (gallery wall) ===== -->
+    <sc-if value="{{ isArt }}" hint-placeholder-val="{{ true }}">
+      <section style="background:#efece7;min-height:100%;padding:0">
+        <div style="padding:56px 24px 8px;max-width:1120px;margin:0 auto">
+          <h1 style="font-weight:700;font-size:clamp(32px,4.6vw,48px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 14px">예술</h1>
+          <p style="font-size:15px;color:#6b695f;margin:0;max-width:46ch;line-height:1.6">벽에 걸린 작품을 천천히 지나며 보세요.</p>
+        </div>
+        <div style="max-width:1120px;margin:0 auto;padding:40px 24px 60px">
+          <div style="border-top:2px solid #d8d4cc;border-bottom:1px solid #ddd9d1;background:linear-gradient(180deg,#f6f4f0,#efece7);display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px 32px;padding:52px 28px 56px;box-shadow:inset 0 18px 40px -30px rgba(0,0,0,0.25)">
+            <sc-for list="{{ artPosts }}" as="post" hint-placeholder-count="4">
+              <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="border:none;background:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;color:#0e0e0e">
+                <span style="background:#fff;padding:16px;border:1px solid #cbc7bf;box-shadow:0 14px 30px -12px rgba(0,0,0,0.35);display:block">
+                  <span style="display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:{{ post.ratio }};min-width:150px;background:repeating-linear-gradient(45deg,#e4e2dc 0 9px,#eeece7 9px 18px);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#a9a79e">{{ post.ph }}</span>
+                </span>
+                <span style="margin-top:14px;background:#fbfaf8;border:1px solid #ddd9d1;padding:6px 12px;text-align:center;max-width:200px">
+                  <span style="display:block;font-size:14px;font-weight:600;line-height:1.3">{{ post.title }}</span>
+                  <span style="display:block;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#9a988f;margin-top:2px">{{ post.excerpt }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== QUOTE (short cards) ===== -->
+    <sc-if value="{{ isQuote }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:56px 24px 24px;max-width:1000px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(32px,4.6vw,48px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 14px">글귀</h1>
+        <p style="font-size:15px;color:#6b695f;margin:0;max-width:46ch;line-height:1.6">마음에 남은 문장을 짧은 카드로 모읍니다.</p>
+      </section>
+      <section style="padding:16px 24px 44px;max-width:1000px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+          <sc-for list="{{ quotePosts }}" as="post" hint-placeholder-count="4">
+            <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="text-align:left;border:1px solid #e8e7e3;background:#faf9f7;cursor:pointer;padding:22px 20px;border-radius:3px;font-family:inherit;display:flex;flex-direction:column;min-height:180px;color:#0e0e0e">
+              <span style="font-size:34px;line-height:0.6;color:#cbc7bf">“</span>
+              <span style="font-size:16.5px;font-weight:500;line-height:1.5;letter-spacing:-0.01em;margin-top:8px">{{ post.title }}</span>
+              <span style="margin-top:auto;padding-top:16px;font-size:12.5px;color:#8a887f">— {{ post.excerpt }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== ARCHIVE ===== -->
+    <sc-if value="{{ isArchive }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:56px 24px 20px;max-width:900px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(30px,4.4vw,44px);line-height:1.05;letter-spacing:-0.035em;margin:0 0 22px">아카이브</h1>
+        <div style="position:relative;margin-bottom:22px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a988f" stroke-width="2" style="position:absolute;left:14px;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input value="{{ query }}" onInput="{{ setSearch }}" placeholder="제목, 내용, 태그 검색…" style="width:100%;font-family:inherit;font-size:15px;padding:14px 16px 14px 42px;border:1px solid #e0ded8;border-radius:3px;background:#faf9f7;color:#0e0e0e" />
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px">
+          <button data-tag="__all" onClick="{{ setTag }}" style="font-family:inherit;font-size:12.5px;font-weight:500;padding:5px 12px;border-radius:2px;cursor:pointer;border:1px solid {{ allTagBorder }};background:{{ allTagBg }};color:{{ allTagColor }}">전체</button>
+          <sc-for list="{{ tagChips }}" as="chip" hint-placeholder-count="6">
+            <button data-tag="{{ chip.name }}" onClick="{{ setTag }}" style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:5px 11px;border-radius:2px;cursor:pointer;border:1px solid {{ chip.border }};background:{{ chip.bg }};color:{{ chip.color }}">#{{ chip.name }}</button>
+          </sc-for>
+        </div>
+      </section>
+      <section style="padding:8px 24px 48px;max-width:900px;margin:0 auto;display:flex;flex-direction:column">
+        <sc-for list="{{ filteredPosts }}" as="post" hint-placeholder-count="5">
+          <button data-id="{{ post.id }}" onClick="{{ openPost }}" style="text-align:left;border:none;border-top:1px solid #eeece8;background:none;cursor:pointer;font-family:inherit;padding:18px 0;display:flex;align-items:baseline;justify-content:space-between;gap:16px;color:#0e0e0e">
+            <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.01em;line-height:1.25">{{ post.title }}</span>
+              <span style="font-size:12.5px;color:#8a887f">{{ post.catLabel }} · {{ post.date }}</span>
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#b0aea6;white-space:nowrap">{{ post.tagline }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noResults }}">
+          <p style="text-align:center;color:#9a988f;font-size:13px;padding:40px 0">검색 결과가 없습니다.</p>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ===== ABOUT ===== -->
+    <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ true }}">
+      <section style="padding:64px 24px 60px;max-width:680px;margin:0 auto">
+        <h1 style="font-weight:700;font-size:clamp(28px,4.4vw,46px);line-height:1.2;letter-spacing:-0.035em;margin:0 0 28px">
+          우리의&nbsp;<span style="display:inline-flex;position:relative;height:1.2em;overflow:hidden;vertical-align:bottom">
+            <span style="display:flex;flex-direction:column;animation:titlecycle 11s cubic-bezier(0.72,0,0.24,1) infinite">
+              <span style="height:1.2em;display:flex;align-items:center">일상을</span>
+              <span style="height:1.2em;display:flex;align-items:center">기록을</span>
+              <span style="height:1.2em;display:flex;align-items:center">오늘을</span>
+              <span style="height:1.2em;display:flex;align-items:center">명언을</span>
+              <span style="height:1.2em;display:flex;align-items:center">기술을</span>
+              <span style="height:1.2em;display:flex;align-items:center">지식을</span>
+              <span style="height:1.2em;display:flex;align-items:center">예술을</span>
+              <span style="height:1.2em;display:flex;align-items:center">일상을</span>
+            </span>
+          </span>&nbsp;나누는 공간
+        </h1>
+        <div style="font-size:17px;line-height:1.85;color:#2c2a26;display:flex;flex-direction:column;gap:18px">
+          <p style="margin:0">나누다는 형식에 얽매이지 않는 기록의 공간입니다. 어떤 날은 사진 한 장과 문장 몇 줄로 충분하고, 어떤 날은 회로도와 코드가 필요하며, 또 어떤 날은 벽에 작품 한 점을, 혹은 짧은 글귀 한 장을 남기고 싶어집니다.</p>
+          <p style="margin:0">여러 사람이 각자의 계정으로 서로 다른 기록을 남기지만, 하나의 에디터와 하나의 태도로 이어집니다. 담는 방식은 달라도 결국 나누고 싶은 마음은 같으니까요.</p>
+        </div>
+        <div style="margin-top:40px;border-top:1px solid #e8e7e3;padding-top:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:18px">
+          <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.02em">일상</div><div style="font-size:12.5px;color:#8a887f;margin-top:4px">사진 · 에세이</div></div>
+          <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.02em">정보</div><div style="font-size:12.5px;color:#8a887f;margin-top:4px">code · 회로 · 수식</div></div>
+          <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.02em">예술</div><div style="font-size:12.5px;color:#8a887f;margin-top:4px">회화 · 사진 · 드로잉</div></div>
+          <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.02em">글귀</div><div style="font-size:12.5px;color:#8a887f;margin-top:4px">문장 · 카드</div></div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== LOGIN / SIGNUP ===== -->
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+      <section style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:56px 24px">
+        <div style="width:100%;max-width:352px">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:30px">
+            <span style="width:46px;height:46px;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px;border-radius:3px">나</span>
+            <h1 style="font-weight:700;font-size:24px;letter-spacing:-0.03em;margin:18px 0 6px">{{ authTitle }}</h1>
+            <p style="font-size:13.5px;color:#8a887f;margin:0">{{ authSub }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ isSignup }}"><input type="text" placeholder="이름 (필명)" style="width:100%;font-family:inherit;font-size:14px;padding:12px 14px;border:1px solid #e0ded8;border-radius:3px;background:#faf9f7;color:#0e0e0e;outline:none" /></sc-if>
+            <input type="email" placeholder="이메일" style="width:100%;font-family:inherit;font-size:14px;padding:12px 14px;border:1px solid #e0ded8;border-radius:3px;background:#faf9f7;color:#0e0e0e;outline:none" />
+            <input type="password" placeholder="비밀번호" style="width:100%;font-family:inherit;font-size:14px;padding:12px 14px;border:1px solid #e0ded8;border-radius:3px;background:#faf9f7;color:#0e0e0e;outline:none" />
+            <button onClick="{{ doLogin }}" style="width:100%;margin-top:4px;border:1px solid #0e0e0e;background:#0e0e0e;color:#fff;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;padding:12px;border-radius:3px">{{ authCta }}</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin:22px 0">
+            <span style="flex:1;height:1px;background:#eeece8"></span><span style="font-size:11px;color:#b0aea6;font-family:'JetBrains Mono',monospace">OR</span><span style="flex:1;height:1px;background:#eeece8"></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <button onClick="{{ doLogin }}" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:1px solid #e0ded8;background:#fff;color:#0e0e0e;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;padding:11px;border-radius:3px">
+              <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.7-.1-1.4-.2-2H12v3.9h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.9z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.7l3.1-3.1A11 11 0 0 0 2 7.1l3.7 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>
+              Google로 계속하기
+            </button>
+            <button onClick="{{ doLogin }}" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:1px solid #0e0e0e;background:#0e0e0e;color:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;padding:11px;border-radius:3px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.9c0-2.2 1.8-3.2 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7 1.3 0 1.6.7 2.8.7 1.1 0 1.9-1 2.6-2 .8-1.2 1.2-2.3 1.2-2.4-.1 0-2.3-.9-2.3-3.5zM14.2 6.3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2z"/></svg>
+              Apple로 계속하기
+            </button>
+          </div>
+          <p style="text-align:center;font-size:12.5px;color:#8a887f;margin:22px 0 0">{{ authSwitchLabel }} <button onClick="{{ toggleAuth }}" style="border:none;background:none;cursor:pointer;font-family:inherit;font-size:12.5px;color:#0e0e0e;text-decoration:underline;padding:0">{{ authSwitchCta }}</button></p>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===== POST DETAIL ===== -->
+    <sc-if value="{{ isPost }}" hint-placeholder-val="{{ true }}">
+      <article style="padding:40px 24px 64px;max-width:720px;margin:0 auto">
+        <button onClick="{{ back }}" style="border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;color:#8a887f;padding:0 0 24px;display:flex;align-items:center;gap:6px">← {{ post.catLabel }}로 돌아가기</button>
+
+        <sc-if value="{{ isArtPost }}">
+          <div style="background:#fff;padding:22px;border:1px solid #d8d4cc;box-shadow:0 24px 50px -20px rgba(0,0,0,0.3);margin-bottom:22px">
+            <div style="width:100%;aspect-ratio:{{ post.ratio }};background:repeating-linear-gradient(45deg,#e4e2dc 0 12px,#eeece7 12px 24px);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a9a79e">{{ post.ph }}</div>
+          </div>
+          <h1 style="font-weight:700;font-size:30px;line-height:1.15;letter-spacing:-0.03em;margin:0 0 8px">{{ post.title }}</h1>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8a887f;margin:0 0 24px">{{ post.excerpt }}</p>
+        </sc-if>
+
+        <sc-if value="{{ isQuotePost }}">
+          <div style="padding:24px 0 8px;text-align:center">
+            <div style="font-size:64px;line-height:0.5;color:#d5d1c8">“</div>
+            <h1 style="font-weight:600;font-size:clamp(24px,4vw,34px);line-height:1.5;letter-spacing:-0.02em;margin:18px 0 20px;text-wrap:balance">{{ post.title }}</h1>
+            <p style="font-size:14px;color:#8a887f;margin:0">— {{ post.excerpt }}</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isProse }}">
+          <h1 style="font-weight:700;font-size:clamp(28px,4.4vw,42px);line-height:1.15;letter-spacing:-0.035em;margin:0 0 14px;text-wrap:balance">{{ post.title }}</h1>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:#8a887f;border-bottom:1px solid #e8e7e3;padding-bottom:22px">
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:22px;height:22px;border-radius:50%;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">이</span>이든</span>
+            <span>·</span><span>{{ post.date }}</span><span>·</span><span>{{ post.read }}</span>
+            <sc-for list="{{ post.tags }}" as="tag" hint-placeholder-count="2"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#54524c;background:#f2f0ec;border:1px solid #e5e3de;padding:2px 7px;border-radius:2px">#{{ tag }}</span></sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isInfoPost }}">
+          <div style="margin:26px 0;border:1px solid #e8e7e3;background:#faf9f7;border-radius:3px;padding:16px 18px">
+            <div style="font-size:11px;color:#9a988f;margin-bottom:8px;font-weight:600">목차 · TOC</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:13.5px">
+              <span style="color:#2c2a26">1. 문제 정의</span>
+              <span style="color:#2c2a26;padding-left:14px">1.1 ADC 샘플링</span>
+              <span style="color:#2c2a26">2. 회로 설계</span>
+              <span style="color:#2c2a26">3. 수식으로 검증하기</span>
+            </div>
+          </div>
+          <p style="font-size:16px;line-height:1.8;color:#22201c;margin:22px 0 14px">신호를 눈으로 보려면 먼저 시간축 위의 전압을 일정 간격으로 표본화해야 합니다. 샘플링 주파수가 신호 대역폭의 두 배를 넘어야 원형을 복원할 수 있습니다.</p>
+          <div style="background:#141414;border-radius:4px;overflow:hidden;margin:20px 0">
+            <div style="display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid #262626">
+              <span style="width:11px;height:11px;border-radius:50%;background:#3a3a3a"></span><span style="width:11px;height:11px;border-radius:50%;background:#3a3a3a"></span><span style="width:11px;height:11px;border-radius:50%;background:#3a3a3a"></span>
+              <span style="margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#7d7d7d">adc_sample.c</span>
+            </div>
+            <pre style="margin:0;padding:16px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#e6e6e6"><span style="color:#8a8a8a">// 12-bit ADC, 1 MSPS</span>
+<span style="color:#c9a26b">uint16_t</span> read_adc(<span style="color:#c9a26b">void</span>) {
+  <span style="color:#c9a26b">while</span> (!(ADC1->SR & ADC_SR_EOC));
+  <span style="color:#c9a26b">return</span> ADC1->DR;
+}</pre>
+          </div>
+          <h2 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;margin:30px 0 12px">회로 설계</h2>
+          <p style="font-size:16px;line-height:1.8;color:#22201c;margin:0 0 14px">입력단에 op-amp 버퍼를 두어 임피던스를 낮추고, RC 필터로 에일리어싱을 억제했습니다.</p>
+          <figure style="margin:20px 0;border:1px solid #e5e3de;background:#f7f6f3;border-radius:3px;overflow:hidden">
+            <div style="aspect-ratio:16/9;background:repeating-linear-gradient(0deg,#eceae5 0 1px,transparent 1px 22px),repeating-linear-gradient(90deg,#eceae5 0 1px,transparent 1px 22px),#f4f3ef;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a9a79e">회로도 · schematic.svg 업로드 영역</div>
+            <figcaption style="padding:10px 14px;font-size:12px;color:#8a887f;border-top:1px solid #e5e3de">그림 1. 입력 버퍼 + 안티에일리어싱 필터</figcaption>
+          </figure>
+          <h2 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;margin:30px 0 12px">수식으로 검증하기</h2>
+          <p style="font-size:16px;line-height:1.8;color:#22201c;margin:0 0 14px">나이퀴스트 조건은 다음과 같이 정리됩니다.</p>
+          <div style="background:#faf9f7;border:1px solid #e8e7e3;border-radius:3px;padding:22px;text-align:center;font-size:22px;color:#141414;margin:16px 0">f<sub style="font-size:13px">s</sub> &nbsp;≥&nbsp; 2·f<sub style="font-size:13px">max</sub></div>
+        </sc-if>
+
+        <sc-if value="{{ isDailyPost }}">
+          <figure style="margin:26px 0">
+            <div style="width:100%;aspect-ratio:3/2;background:repeating-linear-gradient(45deg,#ecebe6 0 12px,#f4f3ef 12px 24px);border:1px solid #e5e3de;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#adaba2">{{ post.ph }}</div>
+          </figure>
+          <div style="font-size:17px;line-height:1.85;color:#22201c;display:flex;flex-direction:column;gap:18px">
+            <p style="margin:0">{{ post.excerpt }}</p>
+            <p style="margin:0">창밖은 아직 파랗고, 물 끓는 소리만이 부엌을 채운다. 하루 중 유일하게 아무에게도 속하지 않은 시간. 나는 이 고요를 오래 기억하고 싶어 사진 한 장과 몇 줄의 문장을 남긴다.</p>
+            <p style="margin:0">별것 아닌 순간들이 모여 결국 한 사람의 결을 만든다고 믿는다.</p>
+          </div>
+        </sc-if>
+      </article>
+    </sc-if>
+
+    <!-- ===== EDITOR (unified block editor) ===== -->
+    <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ true }}">
+      <div style="position:sticky;top:0;z-index:16;background:rgba(255,255,255,0.94);backdrop-filter:blur(10px);border-bottom:1px solid #eeece8">
+        <div style="max-width:760px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;gap:5px;align-items:center;margin-right:auto">
+            <span style="font-size:12px;color:#8a887f;margin-right:1px">발행</span>
+            <button data-cat="daily" onClick="{{ setEditorCat }}" style="font-family:inherit;font-size:12px;padding:4px 11px;border-radius:2px;cursor:pointer;border:1px solid {{ edDailyBorder }};background:{{ edDailyBg }};color:{{ edDailyColor }}">일상</button>
+            <button data-cat="info" onClick="{{ setEditorCat }}" style="font-family:inherit;font-size:12px;padding:4px 11px;border-radius:2px;cursor:pointer;border:1px solid {{ edInfoBorder }};background:{{ edInfoBg }};color:{{ edInfoColor }}">정보</button>
+            <button data-cat="art" onClick="{{ setEditorCat }}" style="font-family:inherit;font-size:12px;padding:4px 11px;border-radius:2px;cursor:pointer;border:1px solid {{ edArtBorder }};background:{{ edArtBg }};color:{{ edArtColor }}">예술</button>
+            <button data-cat="quote" onClick="{{ setEditorCat }}" style="font-family:inherit;font-size:12px;padding:4px 11px;border-radius:2px;cursor:pointer;border:1px solid {{ edQuoteBorder }};background:{{ edQuoteBg }};color:{{ edQuoteColor }}">글귀</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:0;border:1px solid #e6e4de;border-radius:5px;padding:2px;background:#fff">
+            <button data-cmd="bold" onMouseDown="{{ fmt }}" title="굵게" style="width:29px;height:27px;border:none;background:none;cursor:pointer;font-weight:700;font-size:14px;color:#0e0e0e;border-radius:3px" style-hover="background:#f2f0ec">B</button>
+            <button data-cmd="italic" onMouseDown="{{ fmt }}" title="기울임" style="width:29px;height:27px;border:none;background:none;cursor:pointer;font-style:italic;font-size:15px;color:#0e0e0e;border-radius:3px" style-hover="background:#f2f0ec">I</button>
+            <button data-cmd="underline" onMouseDown="{{ fmt }}" title="밑줄" style="width:29px;height:27px;border:none;background:none;cursor:pointer;text-decoration:underline;font-size:14px;color:#0e0e0e;border-radius:3px" style-hover="background:#f2f0ec">U</button>
+            <button data-cmd="strikeThrough" onMouseDown="{{ fmt }}" title="취소선" style="width:29px;height:27px;border:none;background:none;cursor:pointer;text-decoration:line-through;font-size:14px;color:#0e0e0e;border-radius:3px" style-hover="background:#f2f0ec">S</button>
+            <span style="width:1px;height:15px;background:#e6e4de;margin:0 3px"></span>
+            <button onMouseDown="{{ fmtCode }}" title="인라인 코드" style="width:34px;height:27px;border:none;background:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:#0e0e0e;border-radius:3px" style-hover="background:#f2f0ec">&lt;/&gt;</button>
+          </div>
+          <button style="border:1px solid #0e0e0e;background:#0e0e0e;color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;padding:6px 15px;border-radius:2px">발행</button>
+        </div>
+      </div>
+
+      <section style="padding:32px 20px 96px;max-width:760px;margin:0 auto">
+        <div contentEditable="true" data-bid="title" data-ph="제목 없음" onBlur="{{ setBlockContent }}" style="font-weight:700;font-size:38px;line-height:1.15;letter-spacing:-0.035em;color:#0e0e0e;min-height:48px;margin-bottom:4px">{{ titleText }}</div>
+        <div contentEditable="true" data-bid="sub" data-ph="한 줄 설명을 더해보세요" onBlur="{{ setBlockContent }}" style="font-size:15px;color:#8a887f;min-height:24px;margin-bottom:16px">{{ subText }}</div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:22px;border-bottom:1px solid #eeece8;padding-bottom:20px">
+          <sc-for list="{{ editorTags }}" as="et" hint-placeholder-count="2">
+            <span style="display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#54524c;background:#f2f0ec;border:1px solid #e5e3de;padding:3px 4px 3px 9px;border-radius:2px">#{{ et }}<button data-tag="{{ et }}" onClick="{{ removeTag }}" style="border:none;background:none;cursor:pointer;color:#a9a79e;font-size:11px;line-height:1;padding:0 2px">✕</button></span>
+          </sc-for>
+          <input onKeyDown="{{ addTag }}" placeholder="＋ 태그" style="border:none;background:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#54524c;padding:3px 6px;width:76px;outline:none" />
+        </div>
+
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="3">
+            <div style="position:relative">
+              <div style="display:flex;align-items:flex-start;gap:2px">
+                <div style="display:flex;gap:0;flex:none;width:44px;justify-content:flex-end;padding-top:4px">
+                  <button data-bid="{{ b.id }}" onClick="{{ openMenu }}" title="블록 추가" style="width:21px;height:24px;border:none;background:none;cursor:pointer;color:#c2c0b8;font-size:15px;line-height:1;border-radius:4px" style-hover="background:#f2f0ec;color:#0e0e0e">＋</button>
+                  <button data-bid="{{ b.id }}" onClick="{{ removeBlock }}" title="삭제" style="width:21px;height:24px;border:none;background:none;cursor:pointer;color:#c2c0b8;font-size:12px;line-height:1;border-radius:4px" style-hover="background:#f2f0ec;color:#0e0e0e">⋮⋮</button>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <sc-if value="{{ b.isText }}"><div contentEditable="true" data-bid="{{ b.id }}" data-ph="'/'로 블록 추가, 또는 그냥 입력하세요" onBlur="{{ setBlockContent }}" style="font-size:17px;line-height:1.75;color:#22201c;min-height:28px;padding:2px 0">{{ b.content }}</div></sc-if>
+                  <sc-if value="{{ b.isH2 }}"><div contentEditable="true" data-bid="{{ b.id }}" data-ph="제목" onBlur="{{ setBlockContent }}" style="font-weight:700;font-size:24px;line-height:1.3;letter-spacing:-0.02em;color:#0e0e0e;min-height:32px;padding:6px 0 2px">{{ b.content }}</div></sc-if>
+                  <sc-if value="{{ b.isList }}"><div style="display:flex;gap:10px;align-items:baseline"><span style="color:#0e0e0e;font-size:16px;line-height:1.75;flex:none">•</span><div contentEditable="true" data-bid="{{ b.id }}" data-ph="목록 항목" onBlur="{{ setBlockContent }}" style="flex:1;font-size:17px;line-height:1.75;color:#22201c;min-height:28px">{{ b.content }}</div></div></sc-if>
+                  <sc-if value="{{ b.isQuote }}"><div contentEditable="true" data-bid="{{ b.id }}" data-ph="인용문" onBlur="{{ setBlockContent }}" style="border-left:3px solid #0e0e0e;padding:4px 0 4px 16px;font-size:18px;color:#3a382f;min-height:28px">{{ b.content }}</div></sc-if>
+                  <sc-if value="{{ b.isImage }}"><div style="width:100%;aspect-ratio:3/2;background:repeating-linear-gradient(45deg,#ecebe6 0 10px,#f4f3ef 10px 20px);border:1px dashed #cfcdc6;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#a9a79e;margin:6px 0">＋ 이미지 · 사진 드롭</div></sc-if>
+                  <sc-if value="{{ b.isCircuit }}"><div style="width:100%;aspect-ratio:16/9;background:repeating-linear-gradient(0deg,#eceae5 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,#eceae5 0 1px,transparent 1px 20px),#f7f6f3;border:1px dashed #cfcdc6;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#a9a79e;margin:6px 0">＋ 회로도 / 다이어그램 업로드</div></sc-if>
+                  <sc-if value="{{ b.isCode }}"><div style="background:#141414;border-radius:4px;padding:12px 16px;margin:6px 0"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#6f6f6f;margin-bottom:8px">CODE</div><div contentEditable="true" data-bid="{{ b.id }}" data-ph="// 코드를 입력하세요" onBlur="{{ setBlockContent }}" style="font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#e6e6e6;min-height:24px;white-space:pre-wrap">{{ b.content }}</div></div></sc-if>
+                  <sc-if value="{{ b.isMath }}"><div style="background:#faf9f7;border:1px solid #e8e7e3;border-radius:3px;padding:16px;text-align:center;margin:6px 0"><div contentEditable="true" data-bid="{{ b.id }}" data-ph="LaTeX 수식" onBlur="{{ setBlockContent }}" style="font-size:20px;color:#141414;min-height:26px">{{ b.content }}</div></div></sc-if>
+                  <sc-if value="{{ b.isDivider }}"><hr style="border:none;border-top:1px solid #dedcd5;margin:12px 0" /></sc-if>
+                </div>
+              </div>
+              <sc-if value="{{ b.menuOpen }}">
+                <div style="margin:2px 0 8px 46px;border:1px solid #e6e4de;border-radius:7px;background:#fff;box-shadow:0 14px 34px -14px rgba(0,0,0,0.25);padding:6px;max-width:320px">
+                  <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#b8b6ad;font-family:'JetBrains Mono',monospace;padding:4px 8px 6px">블록 삽입</div>
+                  <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="6">
+                    <button data-bid="{{ b.id }}" data-type="{{ mi.type }}" onClick="{{ insertAfter }}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:7px 8px;border-radius:5px;color:#0e0e0e;font-family:inherit" style-hover="background:#f4f2ee">
+                      <span style="width:30px;height:30px;flex:none;border:1px solid #e6e4de;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:#54524c;background:#faf9f7">{{ mi.icon }}</span>
+                      <span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:13px;line-height:1.25">{{ mi.label }}</span><span style="font-size:11px;color:#a9a79e;line-height:1.25">{{ mi.desc }}</span></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #eeece8;padding-top:12px">
+          <button data-bid="__end" onClick="{{ openMenu }}" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#a9a79e;border:none;background:none;cursor:pointer;padding:0">＋ 블록 추가 <span style="color:#d4d2ca">/ 명령어</span></button>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#c2c0b8">{{ charCount }}자 · 임시저장됨</span>
+        </div>
+        <sc-if value="{{ endMenuOpen }}">
+          <div style="margin:8px 0 0;border:1px solid #e6e4de;border-radius:7px;background:#fff;box-shadow:0 14px 34px -14px rgba(0,0,0,0.25);padding:6px;max-width:320px">
+            <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#b8b6ad;font-family:'JetBrains Mono',monospace;padding:4px 8px 6px">블록 삽입</div>
+            <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="6">
+              <button data-bid="__end" data-type="{{ mi.type }}" onClick="{{ insertAfter }}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:7px 8px;border-radius:5px;color:#0e0e0e;font-family:inherit" style-hover="background:#f4f2ee">
+                <span style="width:30px;height:30px;flex:none;border:1px solid #e6e4de;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:#54524c;background:#faf9f7">{{ mi.icon }}</span>
+                <span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:13px;line-height:1.25">{{ mi.label }}</span><span style="font-size:11px;color:#a9a79e;line-height:1.25">{{ mi.desc }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    </div>
+  </main>
+
+  <!-- ============ MOBILE BOTTOM TABS ============ -->
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}">
+    <nav style="flex:none;display:flex;align-items:stretch;border-top:1px solid #e8e7e3;background:#fff;z-index:20">
+      <button data-screen="home" onClick="{{ go }}" style="flex:1;border:none;background:none;cursor:pointer;font-family:inherit;font-size:11px;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ tabHome }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"></path><path d="M5 10v9h14v-9"></path></svg>홈</button>
+      <button data-screen="daily" onClick="{{ go }}" style="flex:1;border:none;background:none;cursor:pointer;font-family:inherit;font-size:11px;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ tabDaily }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="9" r="1.6"></circle><path d="M21 15l-5-5-9 9"></path></svg>일상</button>
+      <button data-screen="info" onClick="{{ go }}" style="flex:1;border:none;background:none;cursor:pointer;font-family:inherit;font-size:11px;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ tabInfo }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 8l-4 4 4 4"></path><path d="M16 8l4 4-4 4"></path></svg>정보</button>
+      <button data-screen="art" onClick="{{ go }}" style="flex:1;border:none;background:none;cursor:pointer;font-family:inherit;font-size:11px;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ tabArt }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="1"></rect><path d="M9 3v18"></path></svg>예술</button>
+      <button data-screen="quote" onClick="{{ go }}" style="flex:1;border:none;background:none;cursor:pointer;font-family:inherit;font-size:11px;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ tabQuote }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8h4v6H7z"></path><path d="M7 11c0-2 1-3 3-3"></path><path d="M14 8h4v6h-4z"></path><path d="M14 11c0-2 1-3 3-3"></path></svg>글귀</button>
+    </nav>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;'desktop' | 'mobile'&quot;}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'home',
+    prev: 'home',
+    loggedIn: false,
+    profileOpen: false,
+    authMode: 'login',
+    postId: null,
+    query: '',
+    tag: '__all',
+    editorCat: 'daily',
+    titleText: '',
+    subText: '',
+    menuFor: null,
+    editorTags: ['에세이', '기록'],
+    blocks: [
+      { id: 1, type: 'text', content: '여기에 이야기를 시작하세요. 일상·정보·예술·글귀 어느 방이든 같은 에디터를 씁니다.' },
+      { id: 2, type: 'image', content: '' },
+      { id: 3, type: 'code', content: 'console.log("hello, nanuda");' },
+    ],
+    nextId: 4,
+  };
+
+  posts() {
+    return [
+      { id:'d1', category:'daily', title:'새벽 네 시의 부엌', excerpt:'아무도 깨지 않은 시간, 물 끓는 소리만 남는다.', date:'2026.06.28', read:'4분', tags:['일상','사진','아침'], ph:'photo · kitchen' },
+      { id:'d2', category:'daily', title:'서촌, 느린 골목', excerpt:'담벼락에 걸린 오후의 그림자를 따라 걸었다.', date:'2026.06.14', read:'6분', tags:['일상','서울','산책'], ph:'photo · alley' },
+      { id:'d3', category:'daily', title:'비 오는 날의 목록', excerpt:'창을 두드리는 소리와 함께 적어 내려간 것들.', date:'2026.05.30', read:'3분', tags:['일상','기록'], ph:'photo · rain' },
+      { id:'i1', category:'info', title:'STM32로 만든 미니 오실로스코프', excerpt:'ADC 샘플링부터 회로 설계, 화면 렌더링까지의 기록.', date:'2026.06.22', read:'12분', tags:['임베디드','STM32','회로'], ph:'' },
+      { id:'i2', category:'info', title:'React 렌더링, 어디서 새는가', excerpt:'불필요한 리렌더의 원인을 프로파일러로 추적했다.', date:'2026.06.03', read:'9분', tags:['React','프론트엔드','성능'], ph:'' },
+      { id:'i3', category:'info', title:'푸리에 변환을 손으로 따라가기', excerpt:'신호를 주파수로 분해하는 과정을 수식과 함께 정리.', date:'2026.05.19', read:'15분', tags:['수학','DSP','수식'], ph:'' },
+      { id:'a1', category:'art', title:'Untitled #12', excerpt:'Acrylic on canvas, 2026', date:'2026', read:'', tags:['회화','추상'], ph:'canvas 60×80', ratio:'3/4' },
+      { id:'a2', category:'art', title:'빛의 기록 — I', excerpt:'Gelatin silver print, 2025', date:'2025', read:'', tags:['사진','흑백'], ph:'silver print', ratio:'1/1' },
+      { id:'a3', category:'art', title:'여백 연습', excerpt:'Ink on paper, 2026', date:'2026', read:'', tags:['드로잉','미니멀'], ph:'ink · paper', ratio:'4/5' },
+      { id:'a4', category:'art', title:'구조 #3', excerpt:'Mixed media, 2026', date:'2026', read:'', tags:['설치','추상'], ph:'mixed media', ratio:'3/2' },
+      { id:'q1', category:'quote', title:'완벽함은 더 보탤 것이 없을 때가 아니라, 더 뺄 것이 없을 때 완성된다.', excerpt:'생텍쥐페리', date:'2026.06.25', read:'', tags:['글귀','미니멀'] },
+      { id:'q2', category:'quote', title:'우리가 반복하는 것이 곧 우리 자신이다.', excerpt:'아리스토텔레스', date:'2026.06.10', read:'', tags:['글귀','습관'] },
+      { id:'q3', category:'quote', title:'천천히 서두르라.', excerpt:'아우구스투스', date:'2026.05.28', read:'', tags:['글귀'] },
+      { id:'q4', category:'quote', title:'남과 비교하는 순간, 오늘의 나는 초라해진다.', excerpt:'스스로에게', date:'2026.05.12', read:'', tags:['글귀','오늘'] },
+    ];
+  }
+
+  catLabel(c) { return ({ daily:'일상', info:'정보', art:'예술', quote:'글귀' })[c] || c; }
+
+  go = (e) => {
+    const s = e.currentTarget.dataset.screen;
+    this.setState({ screen: s, prev: (s === 'home') ? 'home' : this.state.screen, profileOpen: false });
+  };
+  openPost = (e) => {
+    const id = e.currentTarget.dataset.id;
+    this.setState({ postId: id, prev: this.state.screen, screen: 'post' });
+  };
+  back = () => {
+    const p = this.posts().find(x => x.id === this.state.postId);
+    const dest = p ? p.category : (this.state.prev || 'home');
+    this.setState({ screen: dest });
+  };
+  setSearch = (e) => this.setState({ query: e.target.value });
+  setTag = (e) => this.setState({ tag: e.currentTarget.dataset.tag });
+  setEditorCat = (e) => this.setState({ editorCat: e.currentTarget.dataset.cat });
+  toggleProfile = () => this.setState(s => ({ profileOpen: !s.profileOpen }));
+  doLogin = () => this.setState({ loggedIn: true, screen: 'home', profileOpen: false });
+  doLogout = () => this.setState({ loggedIn: false, profileOpen: false, screen: 'home' });
+  toggleAuth = () => this.setState(s => ({ authMode: s.authMode === 'login' ? 'signup' : 'login' }));
+
+  fmt = (e) => { e.preventDefault(); document.execCommand(e.currentTarget.dataset.cmd, false, null); };
+  fmtCode = (e) => {
+    e.preventDefault();
+    const sel = window.getSelection();
+    const t = sel && sel.toString();
+    if (t) {
+      const esc = t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      document.execCommand('insertHTML', false, '<code style="font-family:JetBrains Mono,monospace;background:#f2f0ec;border:1px solid #e5e3de;border-radius:3px;padding:0 4px;font-size:0.88em">' + esc + '</code>');
+    }
+  };
+  openMenu = (e) => {
+    const bid = e.currentTarget.dataset.bid;
+    const val = bid === '__end' ? '__end' : Number(bid);
+    this.setState(s => ({ menuFor: s.menuFor === val ? null : val }));
+  };
+  insertAfter = (e) => {
+    const bid = e.currentTarget.dataset.bid;
+    const type = e.currentTarget.dataset.type;
+    const defaults = { text: '', h2: '제목', quote: '인용문', code: '// 코드', math: 'e = mc^2', image: '', circuit: '', list: '', divider: '' };
+    const id = this.state.nextId;
+    const nb = { id, type, content: defaults[type] || '' };
+    this.setState(s => {
+      let blocks;
+      if (bid === '__end') { blocks = [...s.blocks, nb]; }
+      else { const i = s.blocks.findIndex(b => b.id === Number(bid)); blocks = [...s.blocks.slice(0, i + 1), nb, ...s.blocks.slice(i + 1)]; }
+      return { blocks, nextId: id + 1, menuFor: null };
+    });
+  };
+  addTag = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = e.target.value.trim().replace(/^#/, '');
+    e.target.value = '';
+    if (v && !this.state.editorTags.includes(v)) this.setState(s => ({ editorTags: [...s.editorTags, v] }));
+  };
+  removeTag = (e) => {
+    const t = e.currentTarget.dataset.tag;
+    this.setState(s => ({ editorTags: s.editorTags.filter(x => x !== t) }));
+  };
+  removeBlock = (e) => {
+    const id = Number(e.currentTarget.dataset.bid);
+    this.setState(s => ({ blocks: s.blocks.filter(b => b.id !== id) }));
+  };
+  setBlockContent = (e) => {
+    const bid = e.currentTarget.dataset.bid;
+    const val = e.currentTarget.innerText;
+    if (bid === 'title') { this.state.titleText = val; return; }
+    if (bid === 'sub') { this.state.subText = val; return; }
+    const id = Number(bid);
+    const b = this.state.blocks.find(x => x.id === id);
+    if (b) b.content = val;
+  };
+
+  chipStyle(active) {
+    return active
+      ? { border:'#0e0e0e', bg:'#0e0e0e', color:'#ffffff' }
+      : { border:'#e0ded8', bg:'#ffffff', color:'#54524c' };
+  }
+
+  renderVals() {
+    const { screen, postId, query, tag, editorCat, authMode } = this.state;
+    const all = this.posts();
+    const withMeta = p => ({ ...p, catLabel: this.catLabel(p.category), tagline: '#' + (p.tags[0] || '') });
+
+    const q = query.trim().toLowerCase();
+    const filtered = all.filter(p => {
+      const okTag = tag === '__all' || p.tags.includes(tag);
+      const okQ = !q || (p.title + p.excerpt + p.tags.join(' ')).toLowerCase().includes(q);
+      return okTag && okQ;
+    }).map(withMeta);
+
+    const tagSet = [];
+    all.forEach(p => p.tags.forEach(t => { if (!tagSet.includes(t)) tagSet.push(t); }));
+    const tagChips = tagSet.map(name => {
+      const st = this.chipStyle(tag === name);
+      return { name, border: st.border, bg: st.bg, color: st.color };
+    });
+    const allSt = this.chipStyle(tag === '__all');
+
+    const post = all.find(p => p.id === postId);
+    const postM = post ? withMeta(post) : {};
+
+    const edSt = c => this.chipStyle(editorCat === c);
+    const ed = { daily: edSt('daily'), info: edSt('info'), art: edSt('art'), quote: edSt('quote') };
+
+    const blocks = this.state.blocks.map(b => ({
+      ...b,
+      isText: b.type === 'text', isH2: b.type === 'h2', isQuote: b.type === 'quote', isList: b.type === 'list',
+      isImage: b.type === 'image', isCode: b.type === 'code', isCircuit: b.type === 'circuit',
+      isMath: b.type === 'math', isDivider: b.type === 'divider',
+      menuOpen: this.state.menuFor === b.id,
+    }));
+    const menuItems = [
+      { type: 'text', icon: '¶', label: '텍스트', desc: '일반 문단' },
+      { type: 'h2', icon: 'H', label: '제목', desc: '섹션 제목' },
+      { type: 'list', icon: '•', label: '목록', desc: '불릿 리스트' },
+      { type: 'quote', icon: '❝', label: '인용', desc: '인용문' },
+      { type: 'code', icon: '</>', label: '코드', desc: '문법 하이라이팅' },
+      { type: 'circuit', icon: '⚙', label: '회로도', desc: '다이어그램 업로드' },
+      { type: 'image', icon: '▦', label: '이미지', desc: '사진 · 그림' },
+      { type: 'math', icon: '∑', label: '수식', desc: 'LaTeX 수식' },
+      { type: 'divider', icon: '—', label: '구분선', desc: '' },
+    ];
+    const _txt = (this.state.titleText || '') + ' ' + (this.state.subText || '') + ' ' + this.state.blocks.map(b => b.content || '').join(' ');
+    const charCount = _txt.replace(/\s/g, '').length;
+
+    const tabColor = s => (screen === s ? '#0e0e0e' : '#b0aea6');
+    const isSignup = authMode === 'signup';
+
+    return {
+      isDesktop: this.props.mode !== 'mobile',
+      isMobile: this.props.mode === 'mobile',
+      screen,
+      isHome: screen === 'home', isDaily: screen === 'daily', isInfo: screen === 'info',
+      isArt: screen === 'art', isQuote: screen === 'quote', isArchive: screen === 'archive',
+      isAbout: screen === 'about', isPost: screen === 'post', isEditor: screen === 'editor', isLogin: screen === 'login',
+      loggedIn: this.state.loggedIn, notLoggedIn: !this.state.loggedIn, profileOpen: this.state.profileOpen,
+      navHome: screen === 'home', navDaily: screen === 'daily', navInfo: screen === 'info',
+      navArt: screen === 'art', navQuote: screen === 'quote', navArchive: screen === 'archive', navAbout: screen === 'about',
+      tabHome: tabColor('home'), tabDaily: tabColor('daily'), tabInfo: tabColor('info'),
+      tabArt: tabColor('art'), tabQuote: tabColor('quote'),
+
+      isSignup,
+      authTitle: isSignup ? '나누다에 가입하기' : '다시 오신 걸 환영합니다',
+      authSub: isSignup ? '계정을 만들고 당신의 방을 열어보세요.' : '나누다에 로그인하고 기록을 이어가세요.',
+      authCta: isSignup ? '가입하기' : '로그인',
+      authSwitchLabel: isSignup ? '이미 계정이 있으신가요?' : '계정이 없으신가요?',
+      authSwitchCta: isSignup ? '로그인' : '가입하기',
+
+      dailyPosts: all.filter(p => p.category === 'daily').map(withMeta),
+      infoPosts: all.filter(p => p.category === 'info').map(withMeta),
+      artPosts: all.filter(p => p.category === 'art').map(withMeta),
+      quotePosts: all.filter(p => p.category === 'quote').map(withMeta),
+      recentPosts: ['d1','i1','a1','q1'].map(id => withMeta(all.find(p => p.id === id))),
+
+      query, filteredPosts: filtered, noResults: filtered.length === 0,
+      tagChips, allTagBorder: allSt.border, allTagBg: allSt.bg, allTagColor: allSt.color,
+
+      post: postM,
+      isArtPost: post && post.category === 'art',
+      isQuotePost: post && post.category === 'quote',
+      isInfoPost: post && post.category === 'info',
+      isDailyPost: post && post.category === 'daily',
+      isProse: post && (post.category === 'daily' || post.category === 'info'),
+
+      blocks, titleText: this.state.titleText, subText: this.state.subText,
+      editorTags: this.state.editorTags, menuItems, charCount,
+      endMenuOpen: this.state.menuFor === '__end',
+      edDailyBorder: ed.daily.border, edDailyBg: ed.daily.bg, edDailyColor: ed.daily.color,
+      edInfoBorder: ed.info.border, edInfoBg: ed.info.bg, edInfoColor: ed.info.color,
+      edArtBorder: ed.art.border, edArtBg: ed.art.bg, edArtColor: ed.art.color,
+      edQuoteBorder: ed.quote.border, edQuoteBg: ed.quote.bg, edQuoteColor: ed.quote.color,
+
+      go: this.go, openPost: this.openPost, back: this.back,
+      setSearch: this.setSearch, setTag: this.setTag, setEditorCat: this.setEditorCat,
+      toggleProfile: this.toggleProfile, doLogin: this.doLogin, doLogout: this.doLogout, toggleAuth: this.toggleAuth,
+      removeBlock: this.removeBlock, setBlockContent: this.setBlockContent,
+      fmt: this.fmt, fmtCode: this.fmtCode, openMenu: this.openMenu, insertAfter: this.insertAfter,
+      addTag: this.addTag, removeTag: this.removeTag,
+    };
+  }
+}
+</script>
+</body>
+</html>

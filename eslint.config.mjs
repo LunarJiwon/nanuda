@@ -12,6 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design handoff bundle (prototype markup + the design tool's own runtime) — not
+    // application source, see design/README.md.
+    "design/**",
+    // Cloud Functions is its own separate TypeScript project (own package.json/tsconfig,
+    // own `npm run build` = `tsc`) — not part of the Next.js app this config lints.
+    "functions/**",
+    // Firebase CLI's local deploy cache (bundled/minified Next.js build output it generates
+    // when preparing the Hosting frameworks deploy) — not source, and already gitignored.
+    ".firebase/**",
   ]),
 ]);
 

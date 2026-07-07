@@ -1,0 +1,106 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isRealUser() {
+      // "Real" = not the anonymous fallback identity every visitor gets for view-count dedup
+      // (see src/context/auth-context.tsx). Comments/likes require this; view tracking doesn't.
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isVerifiedUser() {
+      // Additionally requires a verified email (see functions/src/index.ts — we set this
+      // ourselves via the Admin SDK after a custom Resend-based flow, never Firebase's own
+      // built-in verification email; `email_verified` is a standard ID token claim that reflects
+      // the Auth user record's `emailVerified` field for free once it's set). Used specifically
+      // for *creating* new content (posts, comments, likes) — not for deleting/editing existing
+      // content the user already owns, which stays gated on isRealUser() only.
+      return isRealUser() && request.auth.token.email_verified == true;
+    }
+
+    // Posts: public read of published posts. Any authenticated user may create a post as
+    // themselves (no admin/writer role distinction — see project brief decision #4). Only the
+    // author may update or delete their own post, and may not reassign authorship. Denormalized
+    // counters (commentCount/likeCount/viewCount) are the one exception: any authenticated user
+    // (including anonymous, for view counts) may bump *only* those fields — the standard
+    // Firestore pattern for counters touched by non-owners.
+    match /posts/{postId} {
+      allow get, list: if resource.data.status == 'published';
+
+      allow create: if isVerifiedUser()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.status == 'published';
+
+      allow update: if isSignedIn()
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.authorId == resource.data.authorId;
+
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['likeCount', 'commentCount', 'viewCount']);
+
+      allow delete: if isSignedIn()
+        && resource.data.authorId == request.auth.uid;
+
+      // Likes: presence of posts/{postId}/likes/{uid} means uid likes the post. Only the uid
+      // named in the doc path may create/delete their own like, and only a real (non-anonymous)
+      // account may like — same gating as comments.
+      match /likes/{uid} {
+        allow get, list: if true;
+        // Liking (create) requires a verified email; unliking (delete) doesn't — only new-content
+        // creation is gated on verification, per the project brief.
+        allow create: if isVerifiedUser() && request.auth.uid == uid;
+        allow delete: if isRealUser() && request.auth.uid == uid;
+      }
+    }
+
+    // Users: public read of profile docs, owner-only write. Profile fields added for
+    // avatar/cover/bio/handle/links are still owner-only, same principle as before.
+    match /users/{uid} {
+      allow get, list: if true;
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Handles: `handles/{handle} -> { uid }` reserves an @handle for its owner. Handles are
+    // immutable for v1 (no update/delete rule — see SETUP.md scope cut): once claimed, a handle
+    // can never be released or transferred without a manual Console edit.
+    match /handles/{handle} {
+      allow get: if true;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Comments (top-level collection, not a subcollection, so a single query can list every
+    // comment for a post regardless of nesting — see the Comment type doc for the flattened
+    // one-level-of-nesting UI). Only a real, non-anonymous signed-in user may comment as
+    // themselves; only the author may delete their own comment (deleting a top-level comment's
+    // replies is a client-side batch of individual deletes, each covered by this same rule).
+    match /comments/{commentId} {
+      allow get, list: if true;
+      allow create: if isVerifiedUser() && request.resource.data.authorId == request.auth.uid;
+      allow delete: if isRealUser() && resource.data.authorId == request.auth.uid;
+    }
+
+    // Email verification tokens (`emailVerifications/{uid}` — see functions/src/index.ts):
+    // Admin-SDK-only. Cloud Functions bypass these rules entirely, so this explicit deny-all is
+    // defense-in-depth documentation, not something that changes real behavior — no client should
+    // ever read/write this collection directly.
+    match /emailVerifications/{uid} {
+      allow read, write: if false;
+    }
+
+    // Post views: `postViews/{postId}_{uid}` is a create-only dedup marker (no update/delete) —
+    // unlike likes/comments, anonymous visitors are allowed here so guest traffic is still
+    // counted. The doc id must match the uid making the request, so nobody can inflate another
+    // visitor's view.
+    match /postViews/{viewId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && viewId == request.resource.data.postId + '_' + request.auth.uid;
+    }
+  }
+}

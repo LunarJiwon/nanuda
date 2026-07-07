@@ -1,26 +1,304 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Pretendard", var(--font-jetbrains-mono), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  --animate-appfade: appfade 0.35s ease both;
+  --animate-titlecycle: titlecycle 11s cubic-bezier(0.72, 0, 0.24, 1) infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #0e0e0e;
+  font-family: "Pretendard", var(--font-jetbrains-mono), sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5d3ce;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes menuin {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-menuin {
+  animation: menuin 0.14s ease both;
+  transform-origin: top;
+}
+
+@keyframes toastin {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-toastin {
+  animation: toastin 0.22s ease both;
+}
+
+@keyframes appfade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes titlecycle {
+  0%,
+  9% {
+    transform: translateY(0);
+  }
+  14%,
+  23% {
+    transform: translateY(-1.2em);
+  }
+  28%,
+  37% {
+    transform: translateY(-2.4em);
+  }
+  42%,
+  51% {
+    transform: translateY(-3.6em);
+  }
+  56%,
+  65% {
+    transform: translateY(-4.8em);
+  }
+  70%,
+  79% {
+    transform: translateY(-6em);
+  }
+  84%,
+  93% {
+    transform: translateY(-7.2em);
+  }
+  100% {
+    transform: translateY(-8.4em);
+  }
+}
+
+/* Prose rendering for post detail markdown body (see src/components/PostBody.tsx) */
+.nanuda-prose h2 {
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin: 30px 0 12px;
+}
+.nanuda-prose p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #22201c;
+  margin: 0 0 14px;
+}
+.nanuda-prose ul {
+  margin: 0 0 14px;
+  padding-left: 1.3em;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #22201c;
+}
+.nanuda-prose li {
+  margin: 4px 0;
+}
+.nanuda-prose blockquote {
+  border-left: 3px solid #0e0e0e;
+  padding: 4px 0 4px 16px;
+  margin: 20px 0;
+  font-size: 18px;
+  color: #3a382f;
+}
+.nanuda-prose hr {
+  border: none;
+  border-top: 1px solid #dedcd5;
+  margin: 28px 0;
+}
+.nanuda-prose img {
+  max-width: 100%;
+  border-radius: 3px;
+  margin: 20px 0;
+}
+.nanuda-prose code {
+  font-family: var(--font-mono);
+  background: #f2f0ec;
+  border: 1px solid #e5e3de;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 0.88em;
+}
+.nanuda-prose pre {
+  border-radius: 4px;
+  padding: 16px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+/* The theme class lives on the nested <code> (see PostBody.tsx — that's the only node the fence's
+   meta string is available on), so the <pre>'s own background is picked with :has(). */
+.nanuda-prose pre:has(code.hljs-theme-dark) {
+  background: #141414;
+}
+.nanuda-prose pre:has(code.hljs-theme-light) {
+  background: #f7f6f3;
+  border: 1px solid #e5e3de;
+}
+.nanuda-prose pre code {
+  font-family: var(--font-mono);
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.nanuda-prose pre code.hljs-theme-dark {
+  color: #e6e6e6;
+}
+.nanuda-prose pre code.hljs-theme-light {
+  color: #24221d;
+}
+
+/* Syntax highlighting tokens (rehype-highlight, see PostBody.tsx) — a compact hand-picked palette
+   per code-block theme rather than a full imported highlight.js theme file. */
+.hljs-theme-dark .hljs-comment,
+.hljs-theme-dark .hljs-quote {
+  color: #6f6f6f;
+  font-style: italic;
+}
+.hljs-theme-dark .hljs-keyword,
+.hljs-theme-dark .hljs-selector-tag,
+.hljs-theme-dark .hljs-tag {
+  color: #d19a66;
+}
+.hljs-theme-dark .hljs-string,
+.hljs-theme-dark .hljs-attr,
+.hljs-theme-dark .hljs-addition {
+  color: #98c379;
+}
+.hljs-theme-dark .hljs-number,
+.hljs-theme-dark .hljs-literal {
+  color: #d19a66;
+}
+.hljs-theme-dark .hljs-title,
+.hljs-theme-dark .hljs-section {
+  color: #61afef;
+}
+.hljs-theme-dark .hljs-title.class_,
+.hljs-theme-dark .hljs-type {
+  color: #e5c07b;
+}
+.hljs-theme-dark .hljs-variable,
+.hljs-theme-dark .hljs-template-variable,
+.hljs-theme-dark .hljs-attribute {
+  color: #e06c75;
+}
+.hljs-theme-dark .hljs-built_in,
+.hljs-theme-dark .hljs-builtin-name {
+  color: #56b6c2;
+}
+.hljs-theme-dark .hljs-meta {
+  color: #c678dd;
+}
+.hljs-theme-dark .hljs-symbol,
+.hljs-theme-dark .hljs-bullet,
+.hljs-theme-dark .hljs-link {
+  color: #56b6c2;
+}
+.hljs-theme-dark .hljs-deletion {
+  color: #e06c75;
+}
+.hljs-theme-dark .hljs-emphasis {
+  font-style: italic;
+}
+.hljs-theme-dark .hljs-strong {
+  font-weight: 700;
+}
+
+.hljs-theme-light .hljs-comment,
+.hljs-theme-light .hljs-quote {
+  color: #8a887f;
+  font-style: italic;
+}
+.hljs-theme-light .hljs-keyword,
+.hljs-theme-light .hljs-selector-tag,
+.hljs-theme-light .hljs-tag {
+  color: #a626a4;
+}
+.hljs-theme-light .hljs-string,
+.hljs-theme-light .hljs-attr,
+.hljs-theme-light .hljs-addition {
+  color: #50a14f;
+}
+.hljs-theme-light .hljs-number,
+.hljs-theme-light .hljs-literal {
+  color: #986801;
+}
+.hljs-theme-light .hljs-title,
+.hljs-theme-light .hljs-section {
+  color: #4078f2;
+}
+.hljs-theme-light .hljs-title.class_,
+.hljs-theme-light .hljs-type {
+  color: #c18401;
+}
+.hljs-theme-light .hljs-variable,
+.hljs-theme-light .hljs-template-variable,
+.hljs-theme-light .hljs-attribute {
+  color: #e45649;
+}
+.hljs-theme-light .hljs-built_in,
+.hljs-theme-light .hljs-builtin-name {
+  color: #0184bc;
+}
+.hljs-theme-light .hljs-meta {
+  color: #a626a4;
+}
+.hljs-theme-light .hljs-symbol,
+.hljs-theme-light .hljs-bullet,
+.hljs-theme-light .hljs-link {
+  color: #0184bc;
+}
+.hljs-theme-light .hljs-deletion {
+  color: #e45649;
+}
+.hljs-theme-light .hljs-emphasis {
+  font-style: italic;
+}
+.hljs-theme-light .hljs-strong {
+  font-weight: 700;
+}
+.nanuda-prose .katex-display {
+  background: #faf9f7;
+  border: 1px solid #e8e7e3;
+  border-radius: 3px;
+  padding: 22px;
+  margin: 16px 0;
 }
