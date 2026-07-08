@@ -24,7 +24,12 @@ export function Avatar({
   if (src) {
     return (
       <span
-        className={`relative inline-block rounded-full overflow-hidden shrink-0 ${className}`}
+        // `flex` (block-level), not `inline-block` — an inline-block box is subject to the
+        // parent's line-box baseline alignment, which reserves descender space below it and
+        // pushes it up out of vertical center whenever the parent isn't itself a flex container
+        // (e.g. Header.tsx's plain <button>). The no-photo branch below never hit this because
+        // `flex` sidesteps line-box layout entirely.
+        className={`relative flex rounded-full overflow-hidden shrink-0 ${className}`}
         style={{ width: size, height: size }}
       >
         <FadeInImage
