@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { useConfirm } from "@/context/confirm-context";
@@ -160,12 +159,13 @@ export default function ProfileEditPage() {
   return (
     <section className="px-6 pt-12 pb-[60px] max-w-[600px] mx-auto">
       <h1 className="font-bold text-[28px] tracking-[-0.03em] mb-[10px]">프로필 편집</h1>
-      <Link
-        href="/settings/subscription"
-        className="inline-block text-[12.5px] text-[#54524c] underline mb-[26px]"
+      <button
+        type="button"
+        onClick={() => showToast("구독 관리하기는 준비 중입니다. 조금만 기다려주세요.")}
+        className="text-[12.5px] font-medium text-[#b0aea6] border border-[#e0ded8] bg-white px-[13px] py-[7px] rounded-[2px] cursor-pointer mb-[26px]"
       >
-        구독료·구독자·매출은 구독 관리하기에서 확인하세요 →
-      </Link>
+        구독료·구독자·매출 관리하기
+      </button>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div>

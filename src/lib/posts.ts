@@ -91,6 +91,21 @@ export async function getRecentPosts(): Promise<Post[]> {
   return results.flat();
 }
 
+/** Most-liked published posts, for the home page's "인기 있는 게시물" section. Excludes posts with
+ * zero likes so a brand-new site with no engagement yet doesn't show an arbitrary set of posts
+ * mislabeled as "popular" — the section itself is hidden by the caller once this comes back empty. */
+export async function getPopularPosts(limitCount = 6): Promise<Post[]> {
+  return runQuery(() =>
+    query(
+      collection(getPublicDb(), "posts"),
+      where("status", "==", "published"),
+      where("likeCount", ">", 0),
+      orderBy("likeCount", "desc"),
+      limit(limitCount)
+    )
+  );
+}
+
 /** Published posts by a single author, newest first — used by /profile/[handle]. */
 export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
   return runQuery(() =>

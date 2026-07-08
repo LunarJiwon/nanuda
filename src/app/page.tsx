@@ -2,9 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { FadeInImage } from "@/components/FadeInImage";
 import { RotatingWord } from "@/components/RotatingWord";
-import { getRecentPosts } from "@/lib/posts";
+import { getPopularPosts, getRecentPosts } from "@/lib/posts";
 import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
+import type { Post } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -12,8 +13,23 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+function PostCard({ post }: { post: Post }) {
+  return (
+    <Link
+      href={`/post/${post.id}`}
+      className="text-left border-t border-[#eeece8] py-[18px] flex flex-col gap-[7px] text-[#0e0e0e]"
+    >
+      <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.3]">{post.title}</span>
+      <span className="text-[12.5px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
+      <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+        {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
+      </span>
+    </Link>
+  );
+}
+
 export default async function HomePage() {
-  const recentPosts = await getRecentPosts();
+  const [recentPosts, popularPosts] = await Promise.all([getRecentPosts(), getPopularPosts()]);
 
   return (
     <>
@@ -106,9 +122,22 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {popularPosts.length > 0 && (
+        <section className="px-6 pt-[44px] pb-8 max-w-[1120px] mx-auto">
+          <div className="flex items-baseline justify-between border-b border-[#e8e7e3] pb-[14px] mb-[6px]">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] m-0">인기 있는 게시물</h2>
+          </div>
+          <div className="grid gap-x-6 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+            {popularPosts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="px-6 pt-[44px] pb-8 max-w-[1120px] mx-auto">
         <div className="flex items-baseline justify-between border-b border-[#e8e7e3] pb-[14px] mb-[6px]">
-          <h2 className="text-[20px] font-bold tracking-[-0.02em] m-0">최근 기록</h2>
+          <h2 className="text-[20px] font-bold tracking-[-0.02em] m-0">새로운 게시물</h2>
           <Link href="/archive" className="text-[13px] text-[#9a988f]">
             전체 보기 →
           </Link>
@@ -118,17 +147,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid gap-x-6 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
             {recentPosts.map((post) => (
-              <Link
-                key={post.id}
-                href={`/post/${post.id}`}
-                className="text-left border-t border-[#eeece8] py-[18px] flex flex-col gap-[7px] text-[#0e0e0e]"
-              >
-                <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.3]">{post.title}</span>
-                <span className="text-[12.5px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-                <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
-                  {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
-                </span>
-              </Link>
+              <PostCard key={post.id} post={post} />
             ))}
           </div>
         )}
