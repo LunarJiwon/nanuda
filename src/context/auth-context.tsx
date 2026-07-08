@@ -12,7 +12,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/client";
 import { reserveHandleAndCreateUser, uploadAvatar } from "@/lib/profile-client";
 import { sendVerificationEmailCall, VERIFICATION_SEND_FAILED_KEY } from "@/lib/emailVerification-client";
@@ -65,19 +65,28 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * Called on every Google sign-in. Only *seeds* displayName/photoURL/createdAt the very first
+ * time this account's users/{uid} doc is created — on every later login, it just syncs `email`.
+ *
+ * The previous version unconditionally merged displayName/photoURL from the Google account's
+ * *current* profile on every single login, which silently overwrote any custom avatar or name set
+ * via /profile/edit back to whatever the Google account happened to look like (and even reset
+ * createdAt to "now" every time, via the bare serverTimestamp() in that merge).
+ */
 async function upsertBasicUserFields(user: User) {
-  // Merge-only: never touches handle/bio/links/coverURL, so this is safe to call on every
-  // Google login without clobbering a profile completed via /onboarding or edited later.
-  await setDoc(
-    doc(db, "users", user.uid),
-    {
-      displayName: user.displayName ?? "",
-      photoURL: user.photoURL ?? null,
-      email: user.email ?? null,
-      createdAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    await setDoc(userRef, { email: user.email ?? null }, { merge: true });
+    return;
+  }
+  await setDoc(userRef, {
+    displayName: user.displayName ?? "",
+    photoURL: user.photoURL ?? null,
+    email: user.email ?? null,
+    createdAt: serverTimestamp(),
+  });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
