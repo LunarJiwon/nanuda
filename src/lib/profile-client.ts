@@ -105,6 +105,9 @@ export interface UpdateProfileInput {
   photoURL?: string | null;
   coverURL?: string | null;
   links?: ProfileLinks;
+  /** null clears it (author stops offering subscriptions to new subscribers — existing ones are
+   * unaffected, see the Subscription type doc's price-snapshot note). */
+  subscriptionPrice?: number | null;
 }
 
 /** Owner-only profile edit (`/profile/edit`). Handles are immutable for v1 — never written here. */

@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { Avatar } from "./Avatar";
 import { LogoMark } from "./LogoMark";
+import { NotificationBell } from "./NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/", label: "홈" },
@@ -110,6 +111,7 @@ export function Header() {
               로그인
             </Link>
           )}
+          {loggedIn && <NotificationBell />}
           {loggedIn && (
             <button
               ref={profileButtonRef}
@@ -118,7 +120,7 @@ export function Header() {
               // items-center), but a circle sitting next to a hard-edged rectangle reads as
               // sitting slightly low even when its bounding box is perfectly centered — a common
               // optical-alignment correction, not a layout bug.
-              className="ml-[12px] -mt-px rounded-full cursor-pointer"
+              className="ml-[4px] -mt-px rounded-full cursor-pointer"
               aria-label="프로필 메뉴"
             >
               <Avatar src={profile?.photoURL} name={avatarName} size={32} />
@@ -209,6 +211,7 @@ export function Header() {
               </svg>
             </Link>
           )}
+          {loggedIn && <NotificationBell />}
           {loggedIn && (
             <span className="ml-[2px]" aria-label="로그인됨">
               <Avatar src={profile?.photoURL} name={avatarName} size={27} />

@@ -24,6 +24,7 @@ import {
   createPost,
   deleteAllPostImages,
   deletePostImage,
+  setPremiumContent,
   updateDraft,
   updateDraftAsPublished,
   uploadPostImage,
@@ -42,12 +43,15 @@ type FormatKind = "bold" | "italic" | "strike" | "code";
 
 export default function EditorPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { showToast } = useToast();
 
   const [category, setCategory] = useState<Category>("daily");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
+  // Only meaningful if the author has set a subscriptionPrice on their own profile — the toggle
+  // itself is hidden otherwise (see the JSX below).
+  const [isSubscriberOnly, setIsSubscriberOnly] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>([{ id: 1, type: "text", content: "" }]);
@@ -388,8 +392,19 @@ export default function EditorPage() {
   /** Shared by handlePublish/handleSaveDraft. `daily`/`art` posts show coverImageURL as its own
    * figure above the body (see post/[id]/page.tsx) — leaving that same block's image markdown in
    * the body too would render the picture twice, so it's excluded from the body there. Other
-   * categories never render coverImageURL separately, so their cover block stays inline as-is. */
-  function buildPostPayload(status: "published" | "draft", authorId: string, authorName: string): CreatePostInput {
+   * categories never render coverImageURL separately, so their cover block stays inline as-is.
+   *
+   * For a 구독자 전용 post, `payload.content` is deliberately left empty — the real body
+   * (`fullContent`) gets written separately to posts/{id}/premium/body instead (see
+   * PremiumPostBody.tsx and the firestore.rules gating on that subcollection), so the public post
+   * doc this payload becomes can never leak subscriber-only text. `excerpt` is still derived from
+   * the full content, since that's meant to be a public teaser either way.
+   */
+  function buildPostPayload(
+    status: "published" | "draft",
+    authorId: string,
+    authorName: string
+  ): { payload: CreatePostInput; fullContent: string } {
     const coverBlock =
       blocks.find((b) => b.type === "image" && b.imageUrl) ??
       blocks.find((b) => b.type === "circuit" && b.imageUrl) ??
@@ -397,22 +412,27 @@ export default function EditorPage() {
     const coverImageURL = coverBlock?.imageUrl ?? null;
     const showsCoverSeparately = category === "daily" || category === "art";
     const bodyBlocks = showsCoverSeparately && coverBlock ? blocks.filter((b) => b.id !== coverBlock.id) : blocks;
-    const content = blocksToMarkdown(bodyBlocks);
-    const excerpt = deriveExcerpt(content || subtitle || title);
-    const readTime = computeReadTime(content);
+    const fullContent = blocksToMarkdown(bodyBlocks);
+    const excerpt = deriveExcerpt(fullContent || subtitle || title);
+    const readTime = computeReadTime(fullContent);
+    const visibility = isSubscriberOnly && profile?.subscriptionPrice ? "subscribers" : "public";
     return {
-      title: title.trim(),
-      subtitle: subtitle.trim(),
-      content,
-      excerpt,
-      category,
-      tags,
-      authorId,
-      authorName,
-      coverImageURL,
-      readTime,
-      status,
-      ...(category === "art" ? { ratio: "1/1" } : {}),
+      payload: {
+        title: title.trim(),
+        subtitle: subtitle.trim(),
+        content: visibility === "subscribers" ? "" : fullContent,
+        excerpt,
+        category,
+        tags,
+        authorId,
+        authorName,
+        coverImageURL,
+        readTime,
+        status,
+        visibility,
+        ...(category === "art" ? { ratio: "1/1" } : {}),
+      },
+      fullContent,
     };
   }
 
@@ -434,9 +454,14 @@ export default function EditorPage() {
     }
     setPublishing(true);
     try {
-      const payload = buildPostPayload("published", user.uid, user.displayName || user.email || "익명");
+      const { payload, fullContent } = buildPostPayload(
+        "published",
+        user.uid,
+        user.displayName || user.email || "익명"
+      );
       const id = draftId ?? (await createPost(payload));
       if (draftId) await updateDraftAsPublished(draftId, payload);
+      if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
       publishedRef.current = true;
       // Best-effort — a missed revalidation just means the list page is stale for up to the
       // normal 60s window instead of instant, not a broken publish.
@@ -470,12 +495,19 @@ export default function EditorPage() {
     }
     setSavingDraft(true);
     try {
-      const payload = buildPostPayload("draft", user.uid, user.displayName || user.email || "익명");
-      if (draftId) {
-        await updateDraft(draftId, payload);
+      const { payload, fullContent } = buildPostPayload(
+        "draft",
+        user.uid,
+        user.displayName || user.email || "익명"
+      );
+      let id = draftId;
+      if (id) {
+        await updateDraft(id, payload);
       } else {
-        setDraftId(await createPost(payload));
+        id = await createPost(payload);
+        setDraftId(id);
       }
+      if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
       // The draft doc now references whatever images are currently in the blocks, so the
       // abandon-cleanup effect shouldn't sweep them even if the editor is closed without
       // publishing afterward.
@@ -512,6 +544,17 @@ export default function EditorPage() {
               </button>
             ))}
           </div>
+          {Boolean(profile?.subscriptionPrice) && (
+            <label className="flex items-center gap-[6px] text-[12px] text-[#54524c] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isSubscriberOnly}
+                onChange={(e) => setIsSubscriberOnly(e.target.checked)}
+                className="w-[13px] h-[13px] cursor-pointer accent-[#0e0e0e]"
+              />
+              구독자 전용
+            </label>
+          )}
           <div className="flex items-center border border-[#e6e4de] rounded-[5px] p-[2px] bg-white">
             <button
               type="button"

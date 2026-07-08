@@ -7,6 +7,7 @@ import { getPostsByAuthor } from "@/lib/posts";
 import { CoverImage } from "@/components/CoverImage";
 import { Avatar } from "@/components/Avatar";
 import { ProfileEditButton } from "@/components/ProfileEditButton";
+import { SubscribeButton } from "@/components/SubscribeButton";
 import { ProfileWelcomeTutorial } from "@/components/ProfileWelcomeTutorial";
 import { formatDate } from "@/lib/date";
 
@@ -50,7 +51,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <span className="text-[21px] font-bold tracking-[-0.02em]">{user.displayName || "이름 없음"}</span>
             <span className="font-mono text-[13px] text-[#8a887f]">@{handle}</span>
           </div>
-          <ProfileEditButton uid={user.uid} className="ml-auto" />
+          <div className="ml-auto flex items-center gap-[8px]">
+            {Boolean(user.subscriptionPrice) && (
+              <SubscribeButton authorId={user.uid} authorName={user.displayName} price={user.subscriptionPrice!} />
+            )}
+            <ProfileEditButton uid={user.uid} />
+          </div>
         </div>
 
         <Suspense fallback={null}>

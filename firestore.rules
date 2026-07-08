@@ -23,6 +23,17 @@ service cloud.firestore {
       return isRealUser() && request.auth.token.email_verified == true;
     }
 
+    // True if the caller has ever paid for a subscription to `authorId` whose paid-through date
+    // hasn't passed yet — deliberately independent of `status` (see the Subscription type doc):
+    // a cancelled-but-not-yet-expired subscription still grants access, per the confirmed
+    // no-prorated-cutoff policy. Used to gate `posts/{postId}/premium/{doc}` below.
+    function hasActiveAccess(authorId) {
+      let subId = authorId + '_' + request.auth.uid;
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/subscriptions/$(subId))
+        && get(/databases/$(database)/documents/subscriptions/$(subId)).data.currentPeriodEnd > request.time;
+    }
+
     // Posts: public read of published posts. Any authenticated user may create a post as
     // themselves (no admin/writer role distinction — see project brief decision #4). Only the
     // author may update or delete their own post, and may not reassign authorship. Denormalized
@@ -63,6 +74,21 @@ service cloud.firestore {
         // creation is gated on verification, per the project brief.
         allow create: if isVerifiedUser() && request.auth.uid == uid;
         allow delete: if isRealUser() && request.auth.uid == uid;
+      }
+
+      // 구독자 전용 (subscribers-only) posts store their real body here instead of on the parent
+      // doc — see the Post.visibility doc comment in types.ts. This is the only place the actual
+      // gated content lives, so it's the only place that needs the subscription check; the parent
+      // post doc's existing get/list rules stay untouched and safe since they never hold the
+      // gated content for a subscribers-only post in the first place.
+      match /premium/{docId} {
+        allow get: if isSignedIn()
+          && (get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid
+            || hasActiveAccess(get(/databases/$(database)/documents/posts/$(postId)).data.authorId));
+        // Written by the author's own publish flow, right after the parent post doc itself is
+        // created — see posts-client.ts.
+        allow create, update: if isVerifiedUser()
+          && get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid;
       }
     }
 
@@ -113,6 +139,33 @@ service cloud.firestore {
         && request.resource.data.authorId != request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.amount in [1000, 3000, 5000, 10000];
+    }
+
+    // Reader→author paid subscriptions (`subscriptions/{authorId}_{subscriberId}`). Only ever
+    // written by confirmSubscription/cancelSubscription/chargeActiveSubscriptions (Admin SDK,
+    // bypasses these rules) — a client can read its own (either side of the subscription) but can
+    // never create/update one directly, since that would let someone grant themselves access
+    // without actually paying.
+    match /subscriptions/{subId} {
+      allow get: if isSignedIn()
+        && (resource.data.subscriberId == request.auth.uid || resource.data.authorId == request.auth.uid);
+    }
+
+    // The actual Toss billing key for a subscription (`billingKeys/{authorId}_{subscriberId}`),
+    // kept in a separate collection from `subscriptions` (deny-all, same pattern as
+    // emailVerifications) so it's never even structurally reachable by a client read, unlike a
+    // sensitive field living alongside otherwise-normal-to-read subscription metadata.
+    match /billingKeys/{id} {
+      allow read, write: if false;
+    }
+
+    // In-app notifications (`notifications/{uid}/items/{itemId}`), populated by Cloud Functions on
+    // support payments, subscription events, and new subscriber-only posts — see the header's
+    // notification bell. Owner can read their own and mark one read, nothing else.
+    match /notifications/{uid}/items/{itemId} {
+      allow get, list: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
     // Post views: `postViews/{postId}_{uid}` is a create-only dedup marker (no update/delete) —

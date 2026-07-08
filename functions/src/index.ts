@@ -12,10 +12,11 @@
  */
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { randomBytes, createHash } from "node:crypto";
 import { Resend } from "resend";
 
@@ -340,6 +341,31 @@ export const deleteAccount = onCall(async (request) => {
   return { ok: true };
 });
 
+function tossAuthHeader(): string {
+  return `Basic ${Buffer.from(`${TOSS_SECRET_KEY.value()}:`).toString("base64")}`;
+}
+
+type NotificationType = "support" | "subscription_started" | "subscription_canceled" | "new_subscriber_post";
+
+/** Writes one `notifications/{uid}/items/{id}` doc — the only way these are ever created, see
+ * firestore.rules. Never throws: a notification failing to write shouldn't fail the payment/
+ * subscription flow that triggered it. */
+async function writeNotification(
+  db: Firestore,
+  uid: string,
+  notification: { type: NotificationType; title: string; body: string; link: string }
+): Promise<void> {
+  try {
+    await db.collection("notifications").doc(uid).collection("items").add({
+      ...notification,
+      read: false,
+      createdAt: Timestamp.now(),
+    });
+  } catch (err) {
+    console.error("[writeNotification] failed", uid, notification.type, err);
+  }
+}
+
 /**
  * Callable — confirms a reader→writer 응원(tip) payment with Toss after the client-side SDK
  * redirects back from Toss's hosted payment window. This confirm call is what actually captures
@@ -373,7 +399,14 @@ export const confirmTossPayment = onCall({ secrets: [TOSS_SECRET_KEY] }, async (
   if (!snap.exists) {
     throw new HttpsError("not-found", "결제 정보를 찾을 수 없습니다.");
   }
-  const data = snap.data() as { supporterId: string; amount: number; status: string; postId: string };
+  const data = snap.data() as {
+    supporterId: string;
+    amount: number;
+    status: string;
+    postId: string;
+    postTitle: string;
+    authorId: string;
+  };
   if (data.supporterId !== auth.uid) {
     throw new HttpsError("permission-denied", "본인의 결제만 확인할 수 있습니다.");
   }
@@ -388,10 +421,7 @@ export const confirmTossPayment = onCall({ secrets: [TOSS_SECRET_KEY] }, async (
 
   const res = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${Buffer.from(`${TOSS_SECRET_KEY.value()}:`).toString("base64")}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: tossAuthHeader() },
     body: JSON.stringify({ paymentKey, orderId, amount }),
   });
 
@@ -403,5 +433,252 @@ export const confirmTossPayment = onCall({ secrets: [TOSS_SECRET_KEY] }, async (
   }
 
   await docRef.update({ status: "paid", paymentKey, paidAt: Timestamp.now() });
+  await writeNotification(db, data.authorId, {
+    type: "support",
+    title: "새로운 응원을 받았습니다",
+    body: `${data.postTitle} 글에 ${amount.toLocaleString()}원 응원이 도착했습니다.`,
+    link: `/post/${data.postId}`,
+  });
   return { ok: true, postId: data.postId };
+});
+
+const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Callable — confirms a reader→author 구독(subscription) after the client-side SDK redirects back
+ * from Toss's card-registration window (`payment.requestBillingAuth`). Two Toss calls happen here,
+ * both requiring the secret key: issuing the actual billing key from the one-time `authKey`, then
+ * immediately charging the first period so a subscription is never "active" without having
+ * actually been paid for.
+ *
+ * Each author-subscriber pair gets its own independent billing key (customerKey is
+ * `{subscriberId}_{authorId}`, not just the subscriber) rather than sharing one key across a
+ * reader's multiple subscriptions — keeps every subscription's renewal/cancellation fully
+ * independent, at the cost of re-registering a card per author subscribed to.
+ */
+export const confirmSubscription = onCall({ secrets: [TOSS_SECRET_KEY] }, async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  }
+  if (auth.token.firebase?.sign_in_provider === "anonymous") {
+    throw new HttpsError("permission-denied", "게스트 계정은 구독할 수 없습니다.");
+  }
+  if (auth.token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "구독하려면 이메일 인증이 필요합니다.");
+  }
+
+  const { authorId, authKey, customerKey } = (request.data ?? {}) as {
+    authorId?: string;
+    authKey?: string;
+    customerKey?: string;
+  };
+  if (!authorId || !authKey || !customerKey) {
+    throw new HttpsError("invalid-argument", "잘못된 요청입니다.");
+  }
+  if (authorId === auth.uid) {
+    throw new HttpsError("failed-precondition", "자신의 글은 구독할 수 없습니다.");
+  }
+  if (customerKey !== `${auth.uid}_${authorId}`) {
+    throw new HttpsError("invalid-argument", "잘못된 요청입니다.");
+  }
+
+  const db = getFirestore();
+  const subId = `${authorId}_${auth.uid}`;
+  const subRef = db.collection("subscriptions").doc(subId);
+  const existing = await subRef.get();
+  const existingData = existing.data() as { currentPeriodEnd?: Timestamp; createdAt?: Timestamp } | undefined;
+  if (existingData?.currentPeriodEnd && existingData.currentPeriodEnd.toMillis() > Date.now()) {
+    // Already paid through — avoid double-charging on a retried/duplicate confirm call.
+    return { ok: true };
+  }
+
+  const authorSnap = await db.collection("users").doc(authorId).get();
+  const price = authorSnap.data()?.subscriptionPrice as number | undefined;
+  if (!price || price <= 0) {
+    throw new HttpsError("failed-precondition", "이 작가는 구독을 제공하지 않습니다.");
+  }
+
+  const issueRes = await fetch("https://api.tosspayments.com/v1/billing/authorizations/issue", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: tossAuthHeader() },
+    body: JSON.stringify({ authKey, customerKey }),
+  });
+  if (!issueRes.ok) {
+    const error = await issueRes.json().catch(() => ({}));
+    console.error("[confirmSubscription] billing key issue failed", error);
+    throw new HttpsError("internal", "카드 등록에 실패했습니다.");
+  }
+  const { billingKey } = (await issueRes.json()) as { billingKey: string };
+
+  const authorName = (authorSnap.data()?.displayName as string | undefined) || "작가";
+  const orderId = `sub_${subId}_${Date.now()}`;
+  const chargeRes = await fetch(`https://api.tosspayments.com/v1/billing/${billingKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: tossAuthHeader() },
+    body: JSON.stringify({ amount: price, customerKey, orderId, orderName: `${authorName} 구독` }),
+  });
+  if (!chargeRes.ok) {
+    const error = await chargeRes.json().catch(() => ({}));
+    console.error("[confirmSubscription] first charge failed", error);
+    throw new HttpsError("internal", "결제에 실패했습니다.");
+  }
+
+  const now = Timestamp.now();
+  await db.collection("billingKeys").doc(subId).set({ billingKey, customerKey });
+  await subRef.set(
+    {
+      authorId,
+      subscriberId: auth.uid,
+      status: "active",
+      price,
+      currentPeriodEnd: Timestamp.fromMillis(Date.now() + SUBSCRIPTION_PERIOD_MS),
+      canceledAt: null,
+      createdAt: existingData?.createdAt ?? now,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+
+  await writeNotification(db, authorId, {
+    type: "subscription_started",
+    title: "새로운 구독자가 생겼습니다",
+    body: "독자님이 구독을 시작했습니다.",
+    link: "/profile/edit",
+  });
+
+  return { ok: true };
+});
+
+/**
+ * Callable — cancels the caller's own subscription. Only flips `status`; deliberately leaves
+ * `currentPeriodEnd` untouched so access continues through what's already been paid for (the
+ * confirmed no-prorated-cutoff policy) — chargeActiveSubscriptions below skips anything not
+ * `status == 'active'`, so this alone is what stops future renewal charges.
+ */
+export const cancelSubscription = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  }
+  const { authorId } = (request.data ?? {}) as { authorId?: string };
+  if (!authorId) {
+    throw new HttpsError("invalid-argument", "잘못된 요청입니다.");
+  }
+
+  const db = getFirestore();
+  const subRef = db.collection("subscriptions").doc(`${authorId}_${auth.uid}`);
+  const snap = await subRef.get();
+  if (!snap.exists || snap.data()?.subscriberId !== auth.uid) {
+    throw new HttpsError("not-found", "구독 정보를 찾을 수 없습니다.");
+  }
+
+  const now = Timestamp.now();
+  await subRef.update({ status: "canceled", canceledAt: now, updatedAt: now });
+  await writeNotification(db, authorId, {
+    type: "subscription_canceled",
+    title: "구독이 취소되었습니다",
+    body: "결제한 기간이 끝날 때까지는 계속 이용할 수 있습니다.",
+    link: "/profile/edit",
+  });
+  return { ok: true };
+});
+
+/**
+ * Runs daily — charges every subscription whose `currentPeriodEnd` has passed and is still
+ * `status == 'active'` (a cancelled subscription is deliberately excluded here; it simply expires
+ * once its paid-through date arrives instead of being actively renewed). A failed renewal charge
+ * moves the subscription to `past_due` rather than retrying automatically — access still ends
+ * naturally once `currentPeriodEnd` passes either way, since that's the sole access check in
+ * firestore.rules' hasActiveAccess().
+ */
+export const chargeActiveSubscriptions = onSchedule(
+  { schedule: "every 24 hours", secrets: [TOSS_SECRET_KEY] },
+  async () => {
+    const db = getFirestore();
+    const dueSnap = await db
+      .collection("subscriptions")
+      .where("status", "==", "active")
+      .where("currentPeriodEnd", "<=", Timestamp.now())
+      .get();
+
+    if (dueSnap.empty) {
+      console.log("[chargeActiveSubscriptions] nothing due");
+      return;
+    }
+
+    for (const subDoc of dueSnap.docs) {
+      const subId = subDoc.id;
+      const sub = subDoc.data() as { price: number };
+      try {
+        const billingSnap = await db.collection("billingKeys").doc(subId).get();
+        const billing = billingSnap.data() as { billingKey: string; customerKey: string } | undefined;
+        if (!billing) {
+          console.error("[chargeActiveSubscriptions] missing billing key for", subId);
+          await subDoc.ref.update({ status: "past_due", updatedAt: Timestamp.now() });
+          continue;
+        }
+
+        const orderId = `sub_${subId}_${Date.now()}`;
+        const chargeRes = await fetch(`https://api.tosspayments.com/v1/billing/${billing.billingKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: tossAuthHeader() },
+          body: JSON.stringify({
+            amount: sub.price,
+            customerKey: billing.customerKey,
+            orderId,
+            orderName: "구독 갱신 결제",
+          }),
+        });
+        if (!chargeRes.ok) {
+          const error = await chargeRes.json().catch(() => ({}));
+          console.error("[chargeActiveSubscriptions] renewal charge failed for", subId, error);
+          await subDoc.ref.update({ status: "past_due", updatedAt: Timestamp.now() });
+          continue;
+        }
+
+        await subDoc.ref.update({
+          currentPeriodEnd: Timestamp.fromMillis(Date.now() + SUBSCRIPTION_PERIOD_MS),
+          updatedAt: Timestamp.now(),
+        });
+      } catch (err) {
+        console.error("[chargeActiveSubscriptions] unexpected error for", subId, err);
+      }
+    }
+  }
+);
+
+/**
+ * Fires on every write to a post, but only actually does anything on the transition INTO
+ * `status == 'published'` (covers both a fresh publish and a 임시저장 draft later published) for a
+ * `visibility: 'subscribers'` post — re-saving an already-published post doesn't re-notify.
+ * Notifies every subscriber whose access is currently paid-through, not just `status == 'active'`
+ * ones, matching the same access rule as firestore.rules' hasActiveAccess().
+ */
+export const notifySubscribersOfNewPost = onDocumentWritten("posts/{postId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!after) return;
+  if (before?.status === "published" || after.status !== "published") return;
+  if (after.visibility !== "subscribers") return;
+
+  const db = getFirestore();
+  const subsSnap = await db
+    .collection("subscriptions")
+    .where("authorId", "==", after.authorId)
+    .where("currentPeriodEnd", ">", Timestamp.now())
+    .get();
+  if (subsSnap.empty) return;
+
+  const postId = event.params.postId;
+  await Promise.all(
+    subsSnap.docs.map((d) =>
+      writeNotification(db, d.data().subscriberId, {
+        type: "new_subscriber_post",
+        title: "새 구독자 전용 글이 올라왔습니다",
+        body: after.title ?? "",
+        link: `/post/${postId}`,
+      })
+    )
+  );
 });

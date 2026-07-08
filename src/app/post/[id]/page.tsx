@@ -7,6 +7,7 @@ import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
 import { CoverImage } from "@/components/CoverImage";
 import { PostBody } from "@/components/PostBody";
+import { PremiumPostBody } from "@/components/PremiumPostBody";
 import { TagChip } from "@/components/TagChip";
 import { LikeButton } from "@/components/LikeButton";
 import { SupportButton } from "@/components/SupportButton";
@@ -181,7 +182,16 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           )}
 
           <div className="mt-[22px]">
-            <PostBody content={post.content} />
+            {post.visibility === "subscribers" ? (
+              <PremiumPostBody
+                postId={post.id}
+                authorId={post.authorId}
+                authorName={post.authorName}
+                price={author?.subscriptionPrice ?? 0}
+              />
+            ) : (
+              <PostBody content={post.content} />
+            )}
           </div>
         </>
       )}

@@ -34,6 +34,7 @@ function docToPost(snap: DocumentSnapshot): Post {
     authorName: data.authorName ?? "",
     coverImageURL: data.coverImageURL ?? null,
     status: data.status === "draft" ? "draft" : "published",
+    visibility: data.visibility === "subscribers" ? "subscribers" : "public",
     publishedAt: data.publishedAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),
     updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),
     readTime: data.readTime ?? "",

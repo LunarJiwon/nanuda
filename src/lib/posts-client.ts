@@ -3,7 +3,7 @@
 // Client-side Firestore/Storage writes for the editor. These run in the browser as the
 // authenticated user, so security rules (firestore.rules / storage.rules) — not this module —
 // are what actually enforce "only the author can write their own posts".
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
 import type { Category } from "@/lib/types";
@@ -23,6 +23,9 @@ export interface CreatePostInput {
   /** "draft" for the editor's 임시저장 button — firestore.rules allows the author to create either,
    * but only "published" ones are ever publicly readable/listed (see posts.ts). */
   status: "published" | "draft";
+  /** "subscribers" posts are created with `content: ""` — the real body lives in
+   * posts/{id}/premium/body instead, written separately via setPremiumContent below. */
+  visibility: "public" | "subscribers";
 }
 
 export async function createPost(input: CreatePostInput): Promise<string> {
@@ -88,4 +91,11 @@ export async function deleteAllPostImages(tempPostId: string): Promise<void> {
   const folderRef = ref(storage, `posts/${tempPostId}`);
   const { items } = await listAll(folderRef);
   await Promise.all(items.map((item) => deleteObject(item).catch(() => {})));
+}
+
+/** Writes the real body of a 구독자 전용 post to posts/{postId}/premium/body — gated by
+ * firestore.rules to the author or an active subscriber (see hasActiveAccess). The public post
+ * doc's own `content` field is left empty for these posts (see CreatePostInput.visibility). */
+export async function setPremiumContent(postId: string, content: string): Promise<void> {
+  await setDoc(doc(db, "posts", postId, "premium", "body"), { content });
 }

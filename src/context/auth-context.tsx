@@ -127,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           coverURL: data.coverURL ?? null,
           email: data.email ?? null,
           handle: data.handle ?? undefined,
+          subscriptionPrice: data.subscriptionPrice || undefined,
           bio: data.bio ?? "",
           links: data.links ?? {},
           createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),

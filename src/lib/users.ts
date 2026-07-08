@@ -17,6 +17,7 @@ function docToUser(uid: string, data: Record<string, unknown>): AppUser {
     coverURL: (data.coverURL as string | null) ?? null,
     email: (data.email as string | null) ?? null,
     handle: (data.handle as string | undefined) ?? undefined,
+    subscriptionPrice: (data.subscriptionPrice as number | undefined) || undefined,
     bio: (data.bio as string) ?? "",
     links: (data.links as AppUser["links"]) ?? {},
     createdAt:

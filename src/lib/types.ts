@@ -31,6 +31,11 @@ export interface Post {
   authorName: string;
   coverImageURL: string | null;
   status: "published" | "draft";
+  /** "subscribers" posts store their full body separately at posts/{id}/premium/body (not on this
+   * doc at all) so the public list/detail reads that power every list page can't ever return the
+   * gated content — see PremiumPostBody.tsx. `content` on a gated post is empty for that reason;
+   * use `excerpt` for teaser display. */
+  visibility: "public" | "subscribers";
   /** ISO 8601 */
   publishedAt: string;
   /** ISO 8601 */
@@ -67,6 +72,52 @@ export interface AppUser {
   handle?: string;
   bio?: string;
   links?: ProfileLinks;
+  /** Monthly subscription price in KRW the author has set for themselves. Unset/0 means they
+   * don't offer subscriptions — SubscribeButton and the editor's 구독자 전용 toggle both hide
+   * behind this. Author-set, not platform-fixed (see the priority-2 monetization plan). */
+  subscriptionPrice?: number;
+  createdAt: string;
+}
+
+/**
+ * `subscriptions/{authorId}_{subscriberId}` — one reader's paid subscription to one author.
+ * Never created/updated by the client directly; only by confirmSubscription/cancelSubscription/
+ * chargeActiveSubscriptions (functions/src/index.ts), which also own the actual Toss billing key
+ * in the separate admin-only `billingKeys/{authorId}_{subscriberId}` collection.
+ *
+ * `currentPeriodEnd` is the single source of truth for access, deliberately independent of
+ * `status`: cancelling sets status to "canceled" but leaves currentPeriodEnd alone, so the
+ * subscriber keeps access through what they already paid for (see firestore.rules'
+ * hasActiveAccess()) — matches the project's confirmed policy of no prorated/immediate cutoff.
+ */
+export interface Subscription {
+  authorId: string;
+  subscriberId: string;
+  status: "active" | "canceled" | "past_due";
+  /** KRW, snapshotted at subscribe time — a later price change by the author doesn't affect
+   * already-active subscribers until they resubscribe. */
+  price: number;
+  /** ISO 8601 — access is valid through this instant regardless of `status`. */
+  currentPeriodEnd: string;
+  /** ISO 8601, null until cancelled. */
+  canceledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NotificationType = "support" | "subscription_started" | "subscription_canceled" | "new_subscriber_post";
+
+/** `notifications/{uid}/items/{id}` — always written by a Cloud Function (a client can only read
+ * its own and toggle `read`), surfaced via the header's notification bell. */
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  /** In-app path to navigate to on click, e.g. `/post/{id}` or `/profile/{handle}`. */
+  link: string;
+  read: boolean;
+  /** ISO 8601 */
   createdAt: string;
 }
 
