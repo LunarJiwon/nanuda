@@ -177,16 +177,19 @@ export function Header() {
             >
               설정
             </Link>
-            {/* Accounts created before handles existed (or a Google sign-up that hasn't
-                finished /onboarding) have no public profile yet — route there instead of a
-                broken /profile/undefined link. */}
-            <Link
-              href={profile?.handle ? `/profile/${profile.handle}` : "/onboarding"}
-              onClick={closeProfile}
-              className="block w-full text-left text-[13.5px] text-[#0e0e0e] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f4f2ee]"
-            >
-              {profile?.handle ? "내 프로필 보기" : "프로필 완성하기"}
-            </Link>
+            {/* Accounts created before handles existed (or a Google sign-up that hasn't finished
+                /onboarding) have no public profile yet — prompt them to finish it. Accounts that
+                already have a handle can just click the name/avatar row above instead, so there's
+                no separate "내 프로필 보기" link here anymore. */}
+            {!profile?.handle && (
+              <Link
+                href="/onboarding"
+                onClick={closeProfile}
+                className="block w-full text-left text-[13.5px] text-[#0e0e0e] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f4f2ee]"
+              >
+                프로필 완성하기
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="block w-full text-left text-[13.5px] text-[#b64a3f] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f7ecea] cursor-pointer"
