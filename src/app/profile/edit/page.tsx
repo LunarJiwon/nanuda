@@ -32,7 +32,6 @@ export default function ProfileEditPage() {
   const [subscriptionPrice, setSubscriptionPrice] = useState("");
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [twitter, setTwitter] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -67,13 +66,11 @@ export default function ProfileEditPage() {
     setSubscriptionPrice(profile.subscriptionPrice ? String(profile.subscriptionPrice) : "");
     setWebsite(profile.links?.website || "");
     setInstagram(profile.links?.instagram || "");
-    setTwitter(profile.links?.twitter || "");
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, hydrated]);
 
-  const linksValid =
-    isValidOptionalUrl(website) && isValidOptionalUrl(instagram) && isValidOptionalUrl(twitter);
+  const linksValid = isValidOptionalUrl(website) && isValidOptionalUrl(instagram);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,7 +99,6 @@ export default function ProfileEditPage() {
         links: {
           website: website.trim(),
           instagram: instagram.trim(),
-          twitter: twitter.trim(),
         },
         subscriptionPrice: trimmedPrice ? Number(trimmedPrice) : null,
         ...(photoURL !== undefined ? { photoURL } : {}),
@@ -284,16 +280,6 @@ export default function ProfileEditPage() {
             value={instagram}
             onChange={(e) => setInstagram(e.target.value)}
             placeholder="https://instagram.com/handle"
-            className="w-full text-[14px] font-mono px-[14px] py-[11px] border border-[#e0ded8] rounded-[3px] bg-[#faf9f7] text-[#0e0e0e] outline-none"
-          />
-        </label>
-
-        <label className="flex flex-col gap-[6px]">
-          <span className="text-[12.5px] text-[#8a887f]">Twitter / X</span>
-          <input
-            value={twitter}
-            onChange={(e) => setTwitter(e.target.value)}
-            placeholder="https://x.com/handle"
             className="w-full text-[14px] font-mono px-[14px] py-[11px] border border-[#e0ded8] rounded-[3px] bg-[#faf9f7] text-[#0e0e0e] outline-none"
           />
         </label>

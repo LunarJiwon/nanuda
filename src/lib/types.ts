@@ -54,7 +54,6 @@ export interface Post {
 export interface ProfileLinks {
   website?: string;
   instagram?: string;
-  twitter?: string;
 }
 
 export interface AppUser {

@@ -53,7 +53,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   const posts = await getPostsByAuthor(user.uid);
   const followCounts = await getFollowCounts(user.uid);
   const links = user.links ?? {};
-  const hasLinks = Boolean(links.website || links.instagram || links.twitter);
+  const hasLinks = Boolean(links.website || links.instagram);
 
   return (
     <>
@@ -98,16 +98,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                 className="text-[12.5px] text-[#54524c] border border-[#e5e3de] bg-[#f2f0ec] px-[10px] py-[5px] rounded-[2px]"
               >
                 Instagram
-              </a>
-            )}
-            {links.twitter && (
-              <a
-                href={links.twitter}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-[12.5px] text-[#54524c] border border-[#e5e3de] bg-[#f2f0ec] px-[10px] py-[5px] rounded-[2px]"
-              >
-                Twitter / X
               </a>
             )}
           </div>
