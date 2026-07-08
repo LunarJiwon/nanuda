@@ -67,25 +67,6 @@ export default function AboutPage() {
           원동력을 만들어줍니다.
         </p>
       </div>
-
-      <div className="mt-[70px] border-t border-[#e8e7e3] pt-6 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
-        <div>
-          <div className="text-[22px] font-bold tracking-[-0.02em]">일상</div>
-          <div className="text-[12.5px] text-[#8a887f] mt-[4px]">사진 · 에세이</div>
-        </div>
-        <div>
-          <div className="text-[22px] font-bold tracking-[-0.02em]">정보</div>
-          <div className="text-[12.5px] text-[#8a887f] mt-[4px]">코드 · 회로 · 수식</div>
-        </div>
-        <div>
-          <div className="text-[22px] font-bold tracking-[-0.02em]">예술</div>
-          <div className="text-[12.5px] text-[#8a887f] mt-[4px]">회화 · 사진 · 드로잉</div>
-        </div>
-        <div>
-          <div className="text-[22px] font-bold tracking-[-0.02em]">글귀</div>
-          <div className="text-[12.5px] text-[#8a887f] mt-[4px]">문장 · 카드</div>
-        </div>
-      </div>
     </section>
   );
 }

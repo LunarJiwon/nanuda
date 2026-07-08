@@ -9,6 +9,7 @@ import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { MobileTabs } from "@/components/MobileTabs";
 import { PageTransition } from "@/components/PageTransition";
 import { TopProgressBar } from "@/components/TopProgressBar";
+import { Footer } from "@/components/Footer";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -66,8 +67,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 {/* scrollbar-gutter reserves the scrollbar's width even on short pages, so navigating
                     between a scrolling page and a non-scrolling one doesn't shift centered content
                     horizontally when the scrollbar appears/disappears. */}
+                {/* Footer renders inside PageTransition's own wrapper (not as a sibling after it)
+                    because that wrapper is `h-full` — needed so a page like /art can stretch its
+                    own min-h-full background to fill a short viewport — and a sibling placed after
+                    an h-full div gets pushed to the bottom of the *viewport*, not the bottom of the
+                    actual (possibly much shorter) page content. */}
                 <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-white [scrollbar-gutter:stable]">
-                  <PageTransition>{children}</PageTransition>
+                  <PageTransition>
+                    {children}
+                    <Footer />
+                  </PageTransition>
                 </main>
                 <MobileTabs />
               </ProgressProvider>
