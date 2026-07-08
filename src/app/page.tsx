@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { FadeInImage } from "@/components/FadeInImage";
 import { RotatingWord } from "@/components/RotatingWord";
 import { getRecentPosts } from "@/lib/posts";
@@ -6,6 +7,10 @@ import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const recentPosts = await getRecentPosts();

@@ -17,9 +17,30 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "700"],
 });
 
+const SITE_DESCRIPTION =
+  "형식에 얽매이지 않고, 담고 싶은 것을 담습니다. 사진과 글, 코드와 회로, 벽에 걸린 한 점, 그리고 마음에 남은 한 문장까지.";
+
 export const metadata: Metadata = {
+  // Required for every relative URL in child pages' metadata (og:image, canonical, etc.) to
+  // resolve to an absolute one — without this, Next silently leaves them relative, which most
+  // crawlers (Google included) either ignore or resolve incorrectly.
+  metadataBase: new URL("https://nanuda.life"),
+  // Not a title *template* — every page here already appends its own "· 나누다" suffix directly
+  // (see post/[id]'s generateMetadata), and a template would double that up.
   title: "나누다 · nanuda",
-  description: "형식에 얽매이지 않고, 담고 싶은 것을 담습니다. 사진과 글, 코드와 회로, 벽에 걸린 한 점, 그리고 마음에 남은 한 문장까지.",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    siteName: "나누다",
+    type: "website",
+    locale: "ko_KR",
+    title: "나누다 · nanuda",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: "나누다 · nanuda",
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

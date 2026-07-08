@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getPostsByCategory } from "@/lib/posts";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "글귀 · 나누다",
+  description: "마음에 남은 문장을 짧은 카드로 모읍니다.",
+  alternates: { canonical: "/quote" },
+};
 
 export default async function QuotePage() {
   const posts = await getPostsByCategory("quote");

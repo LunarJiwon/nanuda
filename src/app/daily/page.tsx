@@ -1,10 +1,17 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { CoverImage } from "@/components/CoverImage";
 import { getPostsByCategory } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import type { Post } from "@/lib/types";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "일상 · 나누다",
+  description: "사진과 짧은 글로 남기는 하루의 조각들.",
+  alternates: { canonical: "/daily" },
+};
 
 /** Photo-less 일상 entries used to fall back to CoverImage's generic diagonal-stripe "photo"
  * placeholder, which reads as a broken/missing image for a post that was never going to have one.

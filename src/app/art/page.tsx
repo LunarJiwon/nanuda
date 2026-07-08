@@ -1,8 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { CoverImage } from "@/components/CoverImage";
 import { getPostsByCategory } from "@/lib/posts";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "예술 · 나누다",
+  description: "벽에 걸린 작품을 천천히 지나며 보세요.",
+  alternates: { canonical: "/art" },
+};
 
 export default async function ArtPage() {
   const posts = await getPostsByCategory("art");

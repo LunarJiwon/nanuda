@@ -34,9 +34,33 @@ export async function generateMetadata({
   const { id } = await params;
   const post = await getPostById(id);
   if (!post) return { title: "게시글을 찾을 수 없습니다 · 나누다" };
+
+  const url = `/post/${id}`;
+  const title = `${post.title} · 나누다`;
+  // A 구독자 전용 post's excerpt is still derived from the full body (see buildPostPayload in the
+  // editor), so it's a safe public teaser even though the body itself is gated.
+  const description = post.excerpt || post.subtitle || undefined;
+
   return {
-    title: `${post.title} · 나누다`,
-    description: post.excerpt,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description,
+      url,
+      publishedTime: post.publishedAt,
+      modifiedTime: post.updatedAt,
+      authors: [post.authorName],
+      images: post.coverImageURL ? [{ url: post.coverImageURL }] : undefined,
+    },
+    twitter: {
+      card: post.coverImageURL ? "summary_large_image" : "summary",
+      title: post.title,
+      description,
+      images: post.coverImageURL ? [post.coverImageURL] : undefined,
+    },
   };
 }
 
@@ -56,8 +80,23 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const isInfo = post.category === "info";
   const headings = isInfo ? extractH2Headings(post.content) : [];
 
+  // Escaping "<" keeps a post title/excerpt containing literal "</script>" from breaking out of
+  // this script tag — everything else here is either our own data or already-safe JSON syntax.
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt || post.subtitle || undefined,
+    image: post.coverImageURL ? [post.coverImageURL] : undefined,
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt,
+    author: { "@type": "Person", name: post.authorName },
+    mainEntityOfPage: `https://nanuda.life/post/${post.id}`,
+  }).replace(/</g, "\\u003c");
+
   return (
     <article className="px-6 pt-10 pb-16 max-w-[720px] mx-auto">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <ViewTracker postId={post.id} />
       <div className="flex items-center justify-between pb-6">
         <Link href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">

@@ -1,9 +1,16 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { TagChip } from "@/components/TagChip";
 import { getPostsByCategory } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "정보 · 나누다",
+  description: "코드 · 회로 · 수식, 그리고 자동 목차까지. 배운 것을 정리하는 방.",
+  alternates: { canonical: "/info" },
+};
 
 export default async function InfoPage() {
   const posts = await getPostsByCategory("info");
