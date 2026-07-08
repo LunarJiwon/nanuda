@@ -128,14 +128,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             {authorHandle ? (
               <Link
                 href={`/profile/${authorHandle}`}
-                className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e]"
+                className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c] hover:text-[#0e0e0e]"
               >
-                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
+                <Avatar src={author?.photoURL} name={post.authorName} size={26} />
                 {post.authorName}
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f]">
-                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
+              <span className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c]">
+                <Avatar src={author?.photoURL} name={post.authorName} size={26} />
                 {post.authorName}
               </span>
             )}
