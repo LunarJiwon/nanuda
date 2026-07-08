@@ -6,10 +6,7 @@ import { getUserByHandle } from "@/lib/users";
 import { getPostsByAuthor } from "@/lib/posts";
 import { getFollowCounts } from "@/lib/follows";
 import { CoverImage } from "@/components/CoverImage";
-import { Avatar } from "@/components/Avatar";
-import { ProfileEditButton } from "@/components/ProfileEditButton";
-import { FollowSection } from "@/components/FollowSection";
-import { SubscribeButton } from "@/components/SubscribeButton";
+import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileWelcomeTutorial } from "@/components/ProfileWelcomeTutorial";
 import { formatDate } from "@/lib/date";
 import type { Post } from "@/lib/types";
@@ -65,30 +62,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         style={user.coverURL ? { backgroundImage: `url(${user.coverURL})` } : undefined}
       />
       <section className="px-6 max-w-[900px] mx-auto">
-        <div className="flex items-center gap-[16px] pt-[20px] pb-[18px]">
-          <Avatar
-            src={user.photoURL}
-            name={user.displayName}
-            size={84}
-            className="border-[3px] border-white shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
-          />
-          <div className="flex flex-col gap-[4px]">
-            <span className="text-[21px] font-bold tracking-[-0.02em]">{user.displayName || "이름 없음"}</span>
-            <span className="font-mono text-[13px] text-[#8a887f]">@{handle}</span>
-            <FollowSection
-              authorId={user.uid}
-              handle={handle}
-              initialFollowingCount={followCounts.following}
-              initialFollowersCount={followCounts.followers}
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-[8px]">
-            {Boolean(user.subscriptionPrice) && (
-              <SubscribeButton authorId={user.uid} authorName={user.displayName} price={user.subscriptionPrice!} />
-            )}
-            <ProfileEditButton uid={user.uid} />
-          </div>
-        </div>
+        <ProfileHeader
+          uid={user.uid}
+          handle={handle}
+          displayName={user.displayName}
+          photoURL={user.photoURL}
+          subscriptionPrice={user.subscriptionPrice}
+          initialFollowingCount={followCounts.following}
+          initialFollowersCount={followCounts.followers}
+        />
 
         <Suspense fallback={null}>
           <ProfileWelcomeTutorial />

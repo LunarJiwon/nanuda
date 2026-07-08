@@ -5,6 +5,7 @@ import { getPostById } from "@/lib/posts";
 import { getUserById } from "@/lib/users";
 import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
+import { Avatar } from "@/components/Avatar";
 import { CoverImage } from "@/components/CoverImage";
 import { PostBody } from "@/components/PostBody";
 import { PremiumPostBody } from "@/components/PremiumPostBody";
@@ -80,16 +81,18 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <h1 className="font-bold text-[30px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
           <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.excerpt}</p>
           <div className="flex items-center gap-[10px] mb-6">
-            <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
-            <SupportButton
-              postId={post.id}
-              postTitle={post.title}
-              authorId={post.authorId}
-              authorName={post.authorName}
-            />
             <span className="text-[12px] text-[#8a887f]">
               조회 <span className="font-mono">{post.viewCount}</span>
             </span>
+            <div className="ml-auto flex items-center gap-[10px]">
+              <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+              <SupportButton
+                postId={post.id}
+                postTitle={post.title}
+                authorId={post.authorId}
+                authorName={post.authorName}
+              />
+            </div>
           </div>
         </>
       )}
@@ -124,16 +127,12 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <div className="flex flex-wrap gap-[8px] items-center text-[12.5px] text-[#8a887f] border-b border-[#e8e7e3] pb-[22px]">
             {authorHandle ? (
               <Link href={`/profile/${authorHandle}`} className="inline-flex items-center gap-[6px] hover:text-[#0e0e0e]">
-                <span className="w-[22px] h-[22px] rounded-full bg-[#0e0e0e] text-white flex items-center justify-center text-[10px] font-semibold">
-                  {(post.authorName || "나").charAt(0)}
-                </span>
+                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
                 {post.authorName}
               </Link>
             ) : (
               <span className="inline-flex items-center gap-[6px]">
-                <span className="w-[22px] h-[22px] rounded-full bg-[#0e0e0e] text-white flex items-center justify-center text-[10px] font-semibold">
-                  {(post.authorName || "나").charAt(0)}
-                </span>
+                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
                 {post.authorName}
               </span>
             )}
@@ -148,13 +147,15 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             {post.tags.map((tag) => (
               <TagChip key={tag} tag={tag} size="sm" />
             ))}
-            <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
-            <SupportButton
-              postId={post.id}
-              postTitle={post.title}
-              authorId={post.authorId}
-              authorName={post.authorName}
-            />
+            <div className="ml-auto flex items-center gap-[10px]">
+              <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+              <SupportButton
+                postId={post.id}
+                postTitle={post.title}
+                authorId={post.authorId}
+                authorName={post.authorName}
+              />
+            </div>
           </div>
 
           {isDaily && post.coverImageURL && (

@@ -118,7 +118,7 @@ export function SubscribeButton({
             ? `${subscription!.currentPeriodEnd.toLocaleDateString("ko-KR")}까지 이용 가능`
             : "클릭하면 구독을 취소합니다"
         }
-        className="text-[12.5px] font-medium text-[#54524c] border border-[#e0ded8] bg-[#f7f6f3] px-[12px] py-[6px] rounded-[2px] cursor-pointer disabled:opacity-60"
+        className="text-[12.5px] font-medium text-[#54524c] border border-[#e0ded8] bg-[#f7f6f3] px-[13px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
       >
         {isCanceled ? "구독 취소됨" : "구독 중"}
       </button>
@@ -130,7 +130,7 @@ export function SubscribeButton({
       type="button"
       onClick={handleSubscribe}
       disabled={loading}
-      className="text-[12.5px] font-semibold text-white bg-[#0e0e0e] border border-[#0e0e0e] px-[14px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
+      className="text-[12.5px] font-semibold text-white bg-[#0e0e0e] border border-[#0e0e0e] px-[13px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
     >
       {loading ? "이동 중…" : `구독하기 · 월 ${price.toLocaleString()}원`}
     </button>

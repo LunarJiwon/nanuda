@@ -71,10 +71,14 @@ export function FollowButton({
       type="button"
       onClick={handleClick}
       disabled={loading}
+      // Same padding in both states (only color/weight/border differ) — a padding mismatch here
+      // previously changed the button's own height by a couple pixels on toggle, which rippled
+      // into a visible shift of the whole profile header row above it (flex `items-center`
+      // recenters everything against the tallest sibling whenever one child's height changes).
       className={
         following
-          ? "text-[12.5px] font-medium text-[#54524c] border border-[#e0ded8] bg-[#f7f6f3] px-[12px] py-[6px] rounded-[2px] cursor-pointer disabled:opacity-60"
-          : "text-[12.5px] font-semibold text-white bg-[#0e0e0e] border border-[#0e0e0e] px-[14px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
+          ? "text-[12.5px] font-medium text-[#54524c] border border-[#e0ded8] bg-[#f7f6f3] px-[13px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
+          : "text-[12.5px] font-semibold text-white bg-[#0e0e0e] border border-[#0e0e0e] px-[13px] py-[7px] rounded-[2px] cursor-pointer disabled:opacity-60"
       }
     >
       {following ? "팔로잉" : "팔로우"}
