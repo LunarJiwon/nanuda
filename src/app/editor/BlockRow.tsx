@@ -25,6 +25,7 @@ export function BlockRow({
   onFocusField,
   onEnterNewBlock,
   onBackspaceEmpty,
+  onNavigate,
   registerRef,
   onImageSelect,
   onLanguageChange,
@@ -56,22 +57,66 @@ export function BlockRow({
    * previous one, matching the Notion-style convention (no-op on the very first block — see
    * handleBackspaceEmpty in page.tsx). */
   onBackspaceEmpty: () => void;
+  /** ArrowUp/Left at the very start of a field, or ArrowDown/Right at the very end, hands off to
+   * the previous/next block instead of doing nothing — "left"/"up" both mean "go to the end of the
+   * previous block", "right"/"down" both mean "go to the start of the next one". */
+  onNavigate: (direction: "up" | "down" | "left" | "right") => void;
   registerRef: FieldRefSetter;
   onImageSelect: (file: File) => void;
   /** "code" blocks only. */
   onLanguageChange: (language: string) => void;
   onCodeThemeChange: (theme: "light" | "dark") => void;
 }) {
-  // Plain Enter -> new block; Shift+Enter falls through to the field's own default (a real line
-  // break in the multi-line block types; a no-op in the single-line ones, same as any plain input).
-  // Backspace on an already-empty field deletes the block instead of doing nothing.
-  function handleFieldKeyDown(e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) {
-    if (e.key === "Backspace") {
-      if (block.content.trim() !== "") return;
+  // Shared by every field type (including "code", which skips the Enter handling below since it
+  // needs plain Enter to insert a newline — see its own onKeyDown). Handles:
+  //  - Backspace on an already-empty field: delete this block, focus the previous one.
+  //  - ArrowUp / ArrowLeft at the very start (first line for a textarea, position 0 for an input):
+  //    hand off to the end of the previous block instead of doing nothing.
+  //  - ArrowDown / ArrowRight at the very end (last line / final position): hand off to the start
+  //    of the next block.
+  // Returns true if it handled the key, so the Enter-handling caller below knows to stop.
+  function handleNavigationKeys(e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>): boolean {
+    const el = e.currentTarget;
+    if (e.key === "Backspace" && block.content.trim() === "") {
       e.preventDefault();
       onBackspaceEmpty();
-      return;
+      return true;
     }
+    const isTextarea = el.tagName === "TEXTAREA";
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? el.value.length;
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      const atFirstLine = !isTextarea || !el.value.slice(0, start).includes("\n");
+      const atLastLine = !isTextarea || !el.value.slice(end).includes("\n");
+      if (e.key === "ArrowUp" && atFirstLine) {
+        e.preventDefault();
+        onNavigate("up");
+        return true;
+      }
+      if (e.key === "ArrowDown" && atLastLine) {
+        e.preventDefault();
+        onNavigate("down");
+        return true;
+      }
+      return false;
+    }
+    if (e.key === "ArrowLeft" && start === 0 && end === 0) {
+      e.preventDefault();
+      onNavigate("left");
+      return true;
+    }
+    if (e.key === "ArrowRight" && start === el.value.length && end === el.value.length) {
+      e.preventDefault();
+      onNavigate("right");
+      return true;
+    }
+    return false;
+  }
+
+  // Plain Enter -> new block; Shift+Enter falls through to the field's own default (a real line
+  // break in the multi-line block types; a no-op in the single-line ones, same as any plain input).
+  function handleFieldKeyDown(e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) {
+    if (handleNavigationKeys(e)) return;
     if (e.key !== "Enter" || e.shiftKey) return;
     e.preventDefault();
     onEnterNewBlock();
@@ -181,19 +226,14 @@ export function BlockRow({
               </div>
             </div>
             {/* Enter is left alone here on purpose — writing code needs it to insert a newline on
-                every line, not split into a new block. Backspace-when-empty still applies, so a
-                stray empty code block can be dismissed the same way as any other. */}
+                every line, not split into a new block. Backspace-when-empty and arrow-key block
+                navigation still apply, via the same shared handler as every other field type. */}
             <AutoTextarea
               innerRef={registerRef}
               value={block.content}
               onChange={(e) => onContentChange(e.target.value)}
               onFocus={onFocusField}
-              onKeyDown={(e) => {
-                if (e.key === "Backspace" && block.content.trim() === "") {
-                  e.preventDefault();
-                  onBackspaceEmpty();
-                }
-              }}
+              onKeyDown={handleNavigationKeys}
               placeholder="// 코드를 입력하세요"
               className={`w-full font-mono text-[12.5px] leading-[1.7] bg-transparent outline-none ${
                 isLight

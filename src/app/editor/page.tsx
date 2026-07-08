@@ -245,20 +245,49 @@ export default function EditorPage() {
     });
   }
 
+  /** Focuses the given block's field, placing the cursor at its start or end — used by both
+   * backspace-merge and arrow-key navigation below. No-ops if the block has no text field of its
+   * own (image/circuit/divider never register one). */
+  function focusBlockField(id: number, position: "start" | "end") {
+    requestAnimationFrame(() => {
+      const el = fieldRefs.current.get(`block:${id}`);
+      if (!el) return;
+      el.focus();
+      const pos = position === "end" ? el.value.length : 0;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  /** Nearest block in `dir` from `fromIdx` that actually has a text field — skips over bare
+   * image/circuit/divider blocks, which have nothing to focus. */
+  function nearestFocusableBlockId(fromIdx: number, dir: -1 | 1): number | null {
+    for (let idx = fromIdx + dir; idx >= 0 && idx < blocks.length; idx += dir) {
+      if (fieldRefs.current.has(`block:${blocks[idx].id}`)) return blocks[idx].id;
+    }
+    return null;
+  }
+
   /** Backspace on an already-empty block field (see BlockRow's handleFieldKeyDown) deletes that
    * block and moves focus to the end of the previous one — a no-op on the first block, since
    * there's nothing before it to fall back into. */
   function handleBackspaceEmpty(id: number) {
     const idx = blocks.findIndex((b) => b.id === id);
     if (idx <= 0) return;
-    const prevBlock = blocks[idx - 1];
+    const prevId = blocks[idx - 1].id;
     removeBlock(id);
-    requestAnimationFrame(() => {
-      const el = fieldRefs.current.get(`block:${prevBlock.id}`);
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(el.value.length, el.value.length);
-    });
+    focusBlockField(prevId, "end");
+  }
+
+  /** ArrowUp/Left at a field's start boundary, or ArrowDown/Right at its end boundary (see
+   * BlockRow's handleNavigationKeys) — hands off to the adjacent block instead of doing nothing.
+   * A no-op past the first/last block. */
+  function handleBlockNavigate(id: number, direction: "up" | "down" | "left" | "right") {
+    const idx = blocks.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    const dir = direction === "up" || direction === "left" ? -1 : 1;
+    const targetId = nearestFocusableBlockId(idx, dir);
+    if (targetId === null) return;
+    focusBlockField(targetId, dir === -1 ? "end" : "start");
   }
 
   function removeBlock(id: number) {
@@ -716,6 +745,7 @@ export default function EditorPage() {
               onInsert={(type) => insertAfter(block.id, type)}
               onEnterNewBlock={() => handleBlockEnterNewBlock(block.id, block.type)}
               onBackspaceEmpty={() => handleBackspaceEmpty(block.id)}
+              onNavigate={(direction) => handleBlockNavigate(block.id, direction)}
               onContentChange={(content) =>
                 setBlocks((bs) => bs.map((b) => (b.id === block.id ? { ...b, content } : b)))
               }
