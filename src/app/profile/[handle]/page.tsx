@@ -39,18 +39,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         style={user.coverURL ? { backgroundImage: `url(${user.coverURL})` } : undefined}
       />
       <section className="px-6 max-w-[900px] mx-auto">
-        <div className="-mt-[40px] flex items-center gap-[16px] pb-[18px]">
+        <div className="flex items-center gap-[16px] pt-[20px] pb-[18px]">
           <Avatar
             src={user.photoURL}
             name={user.displayName}
             size={84}
             className="border-[3px] border-white shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
           />
-          <div className="flex flex-col pb-[4px] -mt-[10px]">
+          <div className="flex flex-col">
             <span className="text-[21px] font-bold tracking-[-0.02em]">{user.displayName || "이름 없음"}</span>
             <span className="font-mono text-[13px] text-[#8a887f]">@{handle}</span>
           </div>
-          <ProfileEditButton uid={user.uid} className="ml-auto mb-[4px]" />
+          <ProfileEditButton uid={user.uid} className="ml-auto" />
         </div>
 
         <Suspense fallback={null}>

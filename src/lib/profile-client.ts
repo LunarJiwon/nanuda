@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
 import type { AppUser, ProfileLinks } from "@/lib/types";
 
@@ -34,20 +34,29 @@ function extensionOf(file: File): string {
   return fromType || "jpg";
 }
 
-/** Uploads to `users/{uid}/avatar.<ext>` (decision: fixed filename, so re-uploading overwrites). */
-export async function uploadAvatar(uid: string, file: File): Promise<string> {
-  const path = `users/${uid}/avatar.${extensionOf(file)}`;
+/** Uploads `file` to `path` via a resumable upload so `onProgress` (0-100) can drive a progress
+ * bar — a plain uploadBytes() has no progress events, only a single resolve/reject at the end. */
+function uploadWithProgress(path: string, file: File, onProgress?: (percent: number) => void): Promise<string> {
   const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  const task = uploadBytesResumable(storageRef, file);
+  return new Promise((resolve, reject) => {
+    task.on(
+      "state_changed",
+      (snapshot) => onProgress?.(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)),
+      reject,
+      () => getDownloadURL(task.snapshot.ref).then(resolve, reject)
+    );
+  });
+}
+
+/** Uploads to `users/{uid}/avatar.<ext>` (decision: fixed filename, so re-uploading overwrites). */
+export function uploadAvatar(uid: string, file: File, onProgress?: (percent: number) => void): Promise<string> {
+  return uploadWithProgress(`users/${uid}/avatar.${extensionOf(file)}`, file, onProgress);
 }
 
 /** Uploads to `users/{uid}/cover.<ext>`, same overwrite convention as the avatar. */
-export async function uploadCover(uid: string, file: File): Promise<string> {
-  const path = `users/${uid}/cover.${extensionOf(file)}`;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+export function uploadCover(uid: string, file: File, onProgress?: (percent: number) => void): Promise<string> {
+  return uploadWithProgress(`users/${uid}/cover.${extensionOf(file)}`, file, onProgress);
 }
 
 export interface CreateProfileInput {

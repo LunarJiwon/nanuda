@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { Avatar } from "@/components/Avatar";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { updateUserProfile, uploadAvatar, uploadCover } from "@/lib/profile-client";
 import { deleteAccountCall } from "@/lib/account-client";
 import { useObjectUrlPreview } from "@/hooks/useObjectUrlPreview";
@@ -35,6 +36,12 @@ export default function ProfileEditPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState<number | null>(null);
+  const [coverProgress, setCoverProgress] = useState<number | null>(null);
+  // The raw file the user just picked, waiting to be cropped — `avatarFile` (below) is only ever
+  // set to the *cropped* result, never the original pick, so it's always what actually gets
+  // uploaded/previewed.
+  const [avatarCropSource, setAvatarCropSource] = useState<{ file: File; objectUrl: string } | null>(null);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -74,11 +81,13 @@ export default function ProfileEditPage() {
       return;
     }
     setSaving(true);
+    setAvatarProgress(avatarFile ? 0 : null);
+    setCoverProgress(coverFile ? 0 : null);
     try {
       let photoURL: string | null | undefined;
       let coverURL: string | null | undefined;
-      if (avatarFile) photoURL = await uploadAvatar(user.uid, avatarFile);
-      if (coverFile) coverURL = await uploadCover(user.uid, coverFile);
+      if (avatarFile) photoURL = await uploadAvatar(user.uid, avatarFile, setAvatarProgress);
+      if (coverFile) coverURL = await uploadCover(user.uid, coverFile, setCoverProgress);
 
       await updateUserProfile(user.uid, {
         displayName: displayName.trim(),
@@ -99,7 +108,24 @@ export default function ProfileEditPage() {
       showToast("저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
     } finally {
       setSaving(false);
+      setAvatarProgress(null);
+      setCoverProgress(null);
     }
+  }
+
+  function handleAvatarFileSelected(file: File | null) {
+    if (!file) return;
+    setAvatarCropSource({ file, objectUrl: URL.createObjectURL(file) });
+  }
+
+  function closeAvatarCrop() {
+    if (avatarCropSource) URL.revokeObjectURL(avatarCropSource.objectUrl);
+    setAvatarCropSource(null);
+  }
+
+  function handleAvatarCropped(file: File) {
+    setAvatarFile(file);
+    closeAvatarCrop();
   }
 
   async function handleDeleteAccount() {
@@ -151,23 +177,44 @@ export default function ProfileEditPage() {
             className="hidden"
             onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
           />
+          {coverProgress !== null && (
+            <div className="h-[3px] bg-[#f0eee9] rounded-full mt-[8px] overflow-hidden">
+              <div
+                className="h-full bg-[#0e0e0e] transition-[width] duration-150"
+                style={{ width: `${coverProgress}%` }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-[14px]">
           <Avatar src={effectiveAvatarSrc} name={displayName} size={64} />
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            className="text-[12.5px] font-medium text-[#0e0e0e] border border-[#e0ded8] bg-white px-[12px] py-[7px] rounded-[3px] cursor-pointer"
-          >
-            프로필 사진 변경
-          </button>
+          <div className="flex flex-col gap-[6px] flex-1">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="text-[12.5px] font-medium text-[#0e0e0e] border border-[#e0ded8] bg-white px-[12px] py-[7px] rounded-[3px] cursor-pointer w-fit"
+            >
+              프로필 사진 변경
+            </button>
+            {avatarProgress !== null && (
+              <div className="h-[3px] bg-[#f0eee9] rounded-full overflow-hidden max-w-[160px]">
+                <div
+                  className="h-full bg-[#0e0e0e] transition-[width] duration-150"
+                  style={{ width: `${avatarProgress}%` }}
+                />
+              </div>
+            )}
+          </div>
           <input
             ref={avatarInputRef}
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              handleAvatarFileSelected(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
           />
         </div>
 
@@ -250,6 +297,15 @@ export default function ProfileEditPage() {
           {deleting ? "탈퇴 처리 중…" : "회원 탈퇴"}
         </button>
       </div>
+
+      {avatarCropSource && (
+        <AvatarCropModal
+          imageSrc={avatarCropSource.objectUrl}
+          fileName={avatarCropSource.file.name}
+          onCancel={closeAvatarCrop}
+          onCropped={handleAvatarCropped}
+        />
+      )}
     </section>
   );
 }
