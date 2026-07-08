@@ -234,6 +234,10 @@ export default function LoginPage() {
                 <Link href="/terms" target="_blank" className="underline text-[#0e0e0e]">
                   이용약관
                 </Link>
+                {" 및 "}
+                <Link href="/privacy" target="_blank" className="underline text-[#0e0e0e]">
+                  개인정보 수집·이용
+                </Link>
                 에 동의합니다.
               </span>
             </label>

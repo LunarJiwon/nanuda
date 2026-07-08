@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { Avatar } from "@/components/Avatar";
 import { updateUserProfile, uploadAvatar, uploadCover } from "@/lib/profile-client";
+import { deleteAccountCall } from "@/lib/account-client";
 import { useObjectUrlPreview } from "@/hooks/useObjectUrlPreview";
 
 /** A field is valid if empty (all three link fields are optional) or looks like an http(s) URL. */
@@ -21,8 +22,9 @@ function isValidOptionalUrl(value: string): boolean {
 
 export default function ProfileEditPage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const { showToast } = useToast();
+  const [deleting, setDeleting] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -97,6 +99,24 @@ export default function ProfileEditPage() {
       showToast("저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleting) return;
+    const confirmed = window.confirm(
+      "정말 탈퇴하시겠습니까? 프로필과 @핸들이 삭제되며 되돌릴 수 없습니다. 이미 작성한 글·댓글은 남아있습니다."
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await deleteAccountCall();
+      await logout();
+      router.push("/");
+    } catch (err) {
+      console.error("[profile/edit] account deletion failed", err);
+      showToast("회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
+      setDeleting(false);
     }
   }
 
@@ -215,6 +235,21 @@ export default function ProfileEditPage() {
           {saving ? "저장 중…" : "저장"}
         </button>
       </form>
+
+      <div className="mt-[40px] pt-[24px] border-t border-[#eeece8]">
+        <h2 className="text-[13px] font-semibold text-[#b64a3f] mb-[8px]">위험 구역</h2>
+        <p className="text-[12.5px] text-[#8a887f] mb-[12px] leading-[1.6]">
+          계정을 삭제하면 프로필과 @핸들이 사라지며 되돌릴 수 없습니다. 이미 작성한 글과 댓글은 삭제되지 않고 남아있습니다.
+        </p>
+        <button
+          type="button"
+          onClick={handleDeleteAccount}
+          disabled={deleting}
+          className="text-[12.5px] font-medium text-[#b64a3f] border border-[#e5c6c1] bg-white px-[14px] py-[9px] rounded-[3px] disabled:opacity-60 cursor-pointer"
+        >
+          {deleting ? "탈퇴 처리 중…" : "회원 탈퇴"}
+        </button>
+      </div>
     </section>
   );
 }

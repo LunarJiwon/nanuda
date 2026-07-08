@@ -295,3 +295,39 @@ export const cleanupStaleAnonymousUsers = onSchedule("every 168 hours", async ()
 
   console.log(`[cleanupStaleAnonymousUsers] deleted ${staleUids.length} stale anonymous user(s)`);
 });
+
+/**
+ * Callable — deletes the caller's own account: `users/{uid}`, their `handles/{handle}` doc (client
+ * writes can never do this — firestore.rules has no delete rule for handles, since handles are
+ * otherwise immutable for v1, see SETUP.md), and finally the Firebase Auth user itself. Runs as
+ * one Admin-privileged step specifically so the handle release and the Auth deletion can't end up
+ * half-done the way they could if the client deleted the Auth user first and then tried (and
+ * failed, now signed out) to clean up Firestore after.
+ *
+ * Deliberately does NOT touch the user's existing posts/comments/likes — those stay attributed to
+ * a uid that no longer resolves to an account, same as most platforms handle a deleted author.
+ * Cascading that cleanup is a separate, larger feature (and comment cascade-delete already has its
+ * own documented limitations — see deleteCommentCascade).
+ */
+export const deleteAccount = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  }
+  if (auth.token.firebase?.sign_in_provider === "anonymous") {
+    throw new HttpsError("permission-denied", "게스트 계정은 탈퇴할 수 없습니다.");
+  }
+
+  const uid = auth.uid;
+  const db = getFirestore();
+  const userSnap = await db.collection("users").doc(uid).get();
+  const handle = userSnap.data()?.handle as string | undefined;
+
+  const batch = db.batch();
+  batch.delete(db.collection("users").doc(uid));
+  if (handle) batch.delete(db.collection("handles").doc(handle));
+  await batch.commit();
+
+  await getAuth().deleteUser(uid);
+  return { ok: true };
+});
