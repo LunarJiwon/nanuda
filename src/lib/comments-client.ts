@@ -12,6 +12,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
   writeBatch,
   type DocumentData,
@@ -29,6 +30,7 @@ function docToComment(id: string, data: DocumentData): Comment {
     authorPhotoURL: data.authorPhotoURL ?? null,
     content: data.content ?? "",
     parentId: data.parentId ?? null,
+    updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? undefined,
     createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
   };
 }
@@ -67,6 +69,12 @@ export async function addComment(input: AddCommentInput): Promise<void> {
   });
   batch.update(doc(db, "posts", input.postId), { commentCount: increment(1) });
   await batch.commit();
+}
+
+/** Edits a comment's own text — firestore.rules restricts this to the comment's author and to
+ * only the `content`/`updatedAt` fields, so postId/parentId/authorId can never be reassigned. */
+export async function updateComment(commentId: string, content: string): Promise<void> {
+  await updateDoc(doc(db, "comments", commentId), { content, updatedAt: serverTimestamp() });
 }
 
 /**

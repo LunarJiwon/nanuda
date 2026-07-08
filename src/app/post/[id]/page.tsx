@@ -11,6 +11,7 @@ import { PostBody } from "@/components/PostBody";
 import { PremiumPostBody } from "@/components/PremiumPostBody";
 import { TagChip } from "@/components/TagChip";
 import { LikeButton } from "@/components/LikeButton";
+import { PostActions } from "@/components/PostActions";
 import { SupportButton } from "@/components/SupportButton";
 import { ViewTracker } from "@/components/ViewTracker";
 import { CommentSection } from "@/components/comments/CommentSection";
@@ -58,12 +59,12 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   return (
     <article className="px-6 pt-10 pb-16 max-w-[720px] mx-auto">
       <ViewTracker postId={post.id} />
-      <Link
-        href={`/${post.category}`}
-        className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f] pb-6"
-      >
-        ← {CATEGORY_LABEL[post.category]}로 돌아가기
-      </Link>
+      <div className="flex items-center justify-between pb-6">
+        <Link href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">
+          ← {CATEGORY_LABEL[post.category]}로 돌아가기
+        </Link>
+        <PostActions postId={post.id} authorId={post.authorId} category={post.category} />
+      </div>
 
       {isArt && (
         <>

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -10,12 +11,18 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { BlockMenu } from "@/components/BlockMenu";
 import { BlockRow } from "./BlockRow";
-import { BLOCK_DEFAULT_CONTENT, blocksToMarkdown, type BlockType, type EditorBlock } from "@/lib/blocks";
+import {
+  BLOCK_DEFAULT_CONTENT,
+  blocksToMarkdown,
+  markdownToBlocks,
+  type BlockType,
+  type EditorBlock,
+} from "@/lib/blocks";
 import { CATEGORIES, CATEGORY_LABEL, type Category } from "@/lib/types";
 import { chipClass } from "@/lib/chipStyle";
 import { deriveExcerpt } from "@/lib/excerpt";
@@ -24,11 +31,13 @@ import {
   createPost,
   deleteAllPostImages,
   deletePostImage,
+  getPostForEdit,
   setPremiumContent,
   updateDraft,
   updateDraftAsPublished,
   uploadPostImage,
   type CreatePostInput,
+  type PostForEdit,
 } from "@/lib/posts-client";
 import { Spinner } from "@/components/Spinner";
 
@@ -41,8 +50,34 @@ import { Spinner } from "@/components/Spinner";
 // no-op.
 type FormatKind = "bold" | "italic" | "strike" | "code";
 
+/** Reconstructs editor blocks from an existing post for the "수정" flow — mirrors
+ * buildPostPayload's own logic in reverse: daily/art posts show their cover as a separate figure
+ * rather than an inline block (see that function's doc comment), so it's re-inserted here as its
+ * own leading image block so the author can see/replace/reorder it like any other block. */
+function blocksFromPost(post: PostForEdit): EditorBlock[] {
+  const showsCoverSeparately = post.category === "daily" || post.category === "art";
+  const bodyBlocks = markdownToBlocks(post.content);
+  const all: Omit<EditorBlock, "id">[] =
+    showsCoverSeparately && post.coverImageURL
+      ? [{ type: "image", content: "", imageUrl: post.coverImageURL }, ...bodyBlocks]
+      : bodyBlocks;
+  return all.map((b, i) => ({ ...b, id: i + 1 }));
+}
+
 export default function EditorPage() {
+  return (
+    <Suspense
+      fallback={<div className="px-6 py-16 text-center text-[#9a988f] text-[13px]">불러오는 중…</div>}
+    >
+      <EditorPageContent />
+    </Suspense>
+  );
+}
+
+function EditorPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
   const { user, profile, loading } = useAuth();
   const { showToast } = useToast();
 
@@ -65,8 +100,14 @@ export default function EditorPage() {
   const [publishing, setPublishing] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   // Set once a 임시저장 save creates the draft's Firestore doc, so a later save (or publish)
-  // updates that same doc instead of piling up a new one every click.
+  // updates that same doc instead of piling up a new one every click. Also set immediately when
+  // loading an existing post for editing (see the ?edit= effect below).
   const [draftId, setDraftId] = useState<string | null>(null);
+  // The status the loaded post had *before* this edit session — null for a brand-new post.
+  // "published" means handlePublish must not bump publishedAt or touch draft-only UI (see below);
+  // undefined/"draft" means the normal create-or-promote-draft flow applies unchanged.
+  const [originalStatus, setOriginalStatus] = useState<"draft" | "published" | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(() => Boolean(editId));
 
   const nextIdRef = useRef(2);
   const fieldRefs = useRef<Map<string, HTMLTextAreaElement | HTMLInputElement>>(new Map());
@@ -135,6 +176,55 @@ export default function EditorPage() {
     // enforced at publish time, see handlePublish below.
     if (!loading && (!user || user.isAnonymous)) router.replace("/login");
   }, [loading, user, router]);
+
+  // Loads an existing post into the editor for the "수정" flow (see PostActions.tsx, which links
+  // here as /editor?edit={id}). getPostForEdit itself 404s a mismatched author, but this doesn't
+  // run at all until a real user is resolved, so there's no window where a signed-out visitor
+  // could trigger the fetch.
+  useEffect(() => {
+    if (!editId || !user || user.isAnonymous) return;
+    let cancelled = false;
+    // `loadingExisting`'s initial value already covers the normal case (always navigated to via a
+    // fresh /editor?edit=... link click, so this effect's first run coincides with mount) — no
+    // synchronous setState needed here, only the async resolution below.
+    getPostForEdit(editId, user.uid)
+      .then((post) => {
+        if (cancelled) return;
+        if (!post) {
+          showToast("게시글을 찾을 수 없거나 수정 권한이 없습니다.", "error");
+          router.replace("/editor");
+          return;
+        }
+        setTitle(post.title);
+        setSubtitle(post.subtitle);
+        setCategory(post.category);
+        setTags(post.tags);
+        setIsSubscriberOnly(post.visibility === "subscribers");
+        setDraftId(editId);
+        setOriginalStatus(post.status);
+        const nextBlocks = blocksFromPost(post);
+        setBlocks(nextBlocks);
+        nextIdRef.current = nextBlocks.length + 1;
+        // These images already belong to a saved post — never sweep them via the
+        // abandon-cleanup effect just because this edit session doesn't end in another save.
+        publishedRef.current = true;
+      })
+      .catch((err) => {
+        console.error("[editor] failed to load post for edit", err);
+        showToast("게시글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.", "error");
+        router.replace("/editor");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExisting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Keyed on user?.uid (not the whole `user` object) so this fires once `user` first resolves
+    // from null -> real, but doesn't re-fetch and clobber in-progress edits on every later
+    // identity change (e.g. refreshUser() creates a new User object with the same uid).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, user?.uid]);
 
   const canPublish = isVerifiedUser(user);
 
@@ -504,8 +594,14 @@ export default function EditorPage() {
         user.uid,
         user.displayName || user.email || "익명"
       );
+      const isEditingPublished = originalStatus === "published";
       const id = draftId ?? (await createPost(payload));
-      if (draftId) await updateDraftAsPublished(draftId, payload);
+      if (draftId) {
+        // Editing an already-published post keeps its original publishedAt (a plain field
+        // update); only an actual draft->published promotion bumps it to now.
+        if (isEditingPublished) await updateDraft(draftId, payload);
+        else await updateDraftAsPublished(draftId, payload);
+      }
       if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
       publishedRef.current = true;
       // Best-effort — a missed revalidation just means the list page is stale for up to the
@@ -515,7 +611,7 @@ export default function EditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paths: ["/", `/${category}`, "/archive"] }),
       }).catch(() => {});
-      showToast("발행되었습니다.");
+      showToast(isEditingPublished ? "수정되었습니다." : "발행되었습니다.");
       router.push(`/post/${id}`);
     } catch (err) {
       console.error("[editor] publish failed", err);
@@ -566,7 +662,7 @@ export default function EditorPage() {
     }
   }
 
-  if (loading || !user || user.isAnonymous) {
+  if (loading || !user || user.isAnonymous || loadingExisting) {
     return <div className="px-6 py-16 text-center text-[#9a988f] text-[13px]">불러오는 중…</div>;
   }
 
@@ -655,22 +751,30 @@ export default function EditorPage() {
               &lt;/&gt;
             </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={savingDraft || publishing}
-            className="flex items-center gap-[6px] border border-[#e0ded8] bg-white text-[#54524c] text-[12.5px] font-semibold px-[15px] py-[6px] rounded-[2px] disabled:opacity-60 cursor-pointer"
-          >
-            {savingDraft && <Spinner />}
-            {savingDraft ? "저장 중…" : "임시저장"}
-          </button>
+          {originalStatus !== "published" && (
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={savingDraft || publishing}
+              className="flex items-center gap-[6px] border border-[#e0ded8] bg-white text-[#54524c] text-[12.5px] font-semibold px-[15px] py-[6px] rounded-[2px] disabled:opacity-60 cursor-pointer"
+            >
+              {savingDraft && <Spinner />}
+              {savingDraft ? "저장 중…" : "임시저장"}
+            </button>
+          )}
           <button
             type="button"
             onClick={handlePublish}
             disabled={publishing || savingDraft}
             className="border border-[#0e0e0e] bg-[#0e0e0e] text-white text-[12.5px] font-semibold px-[15px] py-[6px] rounded-[2px] disabled:opacity-60 cursor-pointer"
           >
-            {publishing ? "발행 중…" : "발행"}
+            {publishing
+              ? originalStatus === "published"
+                ? "수정 중…"
+                : "발행 중…"
+              : originalStatus === "published"
+                ? "수정 완료"
+                : "발행"}
           </button>
         </div>
       </div>
@@ -678,7 +782,9 @@ export default function EditorPage() {
       {publishing && (
         <div className="fixed inset-0 z-[100] bg-white/70 flex flex-col items-center justify-center gap-[14px]">
           <Spinner className="w-[28px] h-[28px] border-[3px] border-[#e0ded8] border-t-[#0e0e0e]" />
-          <span className="text-[13px] text-[#54524c] font-medium">발행 중…</span>
+          <span className="text-[13px] text-[#54524c] font-medium">
+            {originalStatus === "published" ? "수정 중…" : "발행 중…"}
+          </span>
         </div>
       )}
 
@@ -768,7 +874,8 @@ export default function EditorPage() {
               ＋ 블록 추가 <span className="text-[#d4d2ca]">/ 명령어</span>
             </button>
             <span className="text-[11px] text-[#c2c0b8]">
-              <span className="font-mono">{charCount}</span>자 · 임시저장됨
+              <span className="font-mono">{charCount}</span>자
+              {draftId && originalStatus !== "published" && " · 임시저장됨"}
             </span>
           </div>
           {menuFor === "__end" && (

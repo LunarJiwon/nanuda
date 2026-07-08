@@ -147,6 +147,8 @@ export interface Comment {
   content: string;
   /** null for a top-level comment; otherwise the id of the comment being replied to. */
   parentId: string | null;
+  /** ISO 8601, set only once the comment has been edited — used to show a "(수정됨)" hint. */
+  updatedAt?: string;
   /** ISO 8601 */
   createdAt: string;
 }

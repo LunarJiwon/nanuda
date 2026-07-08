@@ -89,6 +89,10 @@ service cloud.firestore {
         // created — see posts-client.ts.
         allow create, update: if isVerifiedUser()
           && get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid;
+        // Deleting the post itself doesn't cascade to this subcollection automatically — the
+        // client deletes both explicitly (see deletePost in posts-client.ts).
+        allow delete: if isSignedIn()
+          && get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid;
       }
     }
 
@@ -115,6 +119,10 @@ service cloud.firestore {
     match /comments/{commentId} {
       allow get, list: if true;
       allow create: if isVerifiedUser() && request.resource.data.authorId == request.auth.uid;
+      // Editing only ever touches the text itself (plus an updatedAt stamp) — reassigning
+      // postId/parentId/authorId via an "update" would let someone hijack another thread.
+      allow update: if isRealUser() && resource.data.authorId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updatedAt']);
       allow delete: if isRealUser() && resource.data.authorId == request.auth.uid;
     }
 

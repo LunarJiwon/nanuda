@@ -112,6 +112,87 @@ function blockToMarkdown(b: EditorBlock): string {
   }
 }
 
+/**
+ * Reverses blocksToMarkdown for the editor's "수정" (edit an already-published post) flow — since
+ * the stored Markdown is only ever produced by blockToMarkdown above, its shape is fully known,
+ * which makes a reasonably reliable parser tractable (unlike parsing arbitrary Markdown). Known,
+ * accepted limitations from the format itself being lossy in these specific ways:
+ *  - image vs circuit blocks serialize identically (`![alt](url)`) — always comes back as "image".
+ *  - a plain text block whose content happens to start with "## ", "> ", "- ", or is exactly
+ *    "---" round-trips as that block type instead, since the format has no other way to tell them
+ *    apart. Rare in practice for prose, but not impossible.
+ *  - a text block containing two consecutive blank lines (double Shift+Enter) round-trips as two
+ *    separate text blocks, since "\n\n" is otherwise the only block separator.
+ */
+export function markdownToBlocks(markdown: string): Omit<EditorBlock, "id">[] {
+  const blocks: Omit<EditorBlock, "id">[] = [];
+  let rest = markdown.replace(/\r\n/g, "\n").trim();
+
+  while (rest.length > 0) {
+    let m = rest.match(/^```([^\n]*)\n([\s\S]*?)\n```/);
+    if (m) {
+      const info = m[1].trim();
+      const lang = info.match(/^(\S+)/)?.[1] || "plaintext";
+      const theme = /theme=light/.test(info) ? "light" : "dark";
+      blocks.push({ type: "code", content: m[2], language: lang, codeTheme: theme });
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    m = rest.match(/^\$\$\n([\s\S]*?)\n\$\$/);
+    if (m) {
+      blocks.push({ type: "math", content: m[1] });
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    m = rest.match(/^---(?:\n|$)/);
+    if (m) {
+      blocks.push({ type: "divider", content: "" });
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    m = rest.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\n|$)/);
+    if (m) {
+      blocks.push({ type: "image", content: m[1], imageUrl: m[2] });
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    m = rest.match(/^##\s+([^\n]*)(?:\n|$)/);
+    if (m) {
+      blocks.push({ type: "h2", content: m[1] });
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    m = rest.match(/^(-\s+[^\n]*(?:\n-\s+[^\n]*)*)(?:\n|$)/);
+    if (m) {
+      for (const line of m[1].split("\n")) {
+        blocks.push({ type: "list", content: line.replace(/^-\s+/, "") });
+      }
+      rest = rest.slice(m[0].length).replace(/^\n+/, "");
+      continue;
+    }
+
+    if (rest.startsWith("> ")) {
+      const idx = rest.indexOf("\n\n");
+      const chunk = idx === -1 ? rest : rest.slice(0, idx);
+      blocks.push({ type: "quote", content: chunk.replace(/^>\s?/, "") });
+      rest = idx === -1 ? "" : rest.slice(idx).replace(/^\n+/, "");
+      continue;
+    }
+
+    const idx = rest.indexOf("\n\n");
+    const chunk = idx === -1 ? rest : rest.slice(0, idx);
+    blocks.push({ type: "text", content: chunk });
+    rest = idx === -1 ? "" : rest.slice(idx).replace(/^\n+/, "");
+  }
+
+  return blocks.length > 0 ? blocks : [{ type: "text", content: "" }];
+}
+
 /** Flattens blocks into a single Markdown document, keeping adjacent list items in one list. */
 export function blocksToMarkdown(blocks: EditorBlock[]): string {
   const parts: string[] = [];

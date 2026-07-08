@@ -6,7 +6,13 @@ import { useAuth, isRealUser, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { Avatar } from "@/components/Avatar";
 import { formatDate } from "@/lib/date";
-import { addComment, deleteCommentCascade, subscribeToPostComments } from "@/lib/comments-client";
+import {
+  addComment,
+  deleteCommentCascade,
+  subscribeToPostComments,
+  updateComment,
+} from "@/lib/comments-client";
+import { getCachedAuthorProfile } from "@/lib/profile-cache-client";
 import type { Comment } from "@/lib/types";
 
 interface CommentNode extends Comment {
@@ -55,16 +61,22 @@ function groupComments(comments: Comment[]): CommentNode[] {
 
 function CommentForm({
   placeholder,
+  initialValue = "",
+  submitLabel = "게시",
+  submittingLabel = "게시 중…",
   onSubmit,
   onCancel,
   autoFocus,
 }: {
   placeholder: string;
+  initialValue?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
   onSubmit: (content: string) => Promise<void>;
   onCancel?: () => void;
   autoFocus?: boolean;
 }) {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialValue);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -75,6 +87,9 @@ function CommentForm({
     try {
       await onSubmit(trimmed);
       setContent("");
+    } catch {
+      // Leave the typed content in place so a failed submit doesn't lose it — the caller already
+      // surfaced an error toast.
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +120,7 @@ function CommentForm({
           disabled={submitting || !content.trim()}
           className="border border-[#0e0e0e] bg-[#0e0e0e] text-white text-[12px] font-semibold px-[13px] py-[6px] rounded-[3px] disabled:opacity-60 cursor-pointer"
         >
-          {submitting ? "게시 중…" : "게시"}
+          {submitting ? submittingLabel : submitLabel}
         </button>
       </div>
     </form>
@@ -134,57 +149,115 @@ function VerifyEmailPrompt() {
 
 function CommentRow({
   comment,
+  canEdit,
   canDelete,
   canReply,
   isReplying,
   onToggleReply,
   onDelete,
+  onEdit,
 }: {
   comment: Comment;
+  canEdit: boolean;
   canDelete: boolean;
   canReply: boolean;
   isReplying: boolean;
   onToggleReply: () => void;
   onDelete: () => void;
+  /** Rethrows on failure (see CommentSection.handleEdit) so this stays in edit mode and
+   * CommentForm keeps the typed text instead of silently discarding it. */
+  onEdit: (content: string) => Promise<void>;
 }) {
+  const [editing, setEditing] = useState(false);
+  // The comment doc's authorPhotoURL/authorName are a snapshot from post time — this fetches the
+  // author's *current* profile (cached, see profile-cache-client.ts) and prefers it once loaded,
+  // falling back to the snapshot until then so there's no flash of a missing avatar.
+  const [liveProfile, setLiveProfile] = useState<{ displayName: string; photoURL: string | null } | null>(
+    null
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    getCachedAuthorProfile(comment.authorId).then((p) => {
+      if (!cancelled) setLiveProfile(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [comment.authorId]);
+
+  const photoURL = liveProfile?.photoURL ?? comment.authorPhotoURL;
+  const displayName = liveProfile?.displayName || comment.authorName;
+
+  async function handleEditSubmit(content: string) {
+    await onEdit(content);
+    setEditing(false);
+  }
+
   return (
     <div className="flex gap-[10px]">
-      <Avatar src={comment.authorPhotoURL} name={comment.authorName} size={30} />
+      <Avatar src={photoURL} name={displayName} size={30} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-[8px]">
-          <span className="text-[13px] font-semibold text-[#0e0e0e]">{comment.authorName}</span>
+          <span className="text-[13px] font-semibold text-[#0e0e0e]">{displayName}</span>
           <span className="text-[11.5px] text-[#b0aea6]">{formatDate(comment.createdAt)}</span>
+          {comment.updatedAt && <span className="text-[11px] text-[#b0aea6]">(수정됨)</span>}
         </div>
-        <p className="text-[13.5px] leading-[1.6] text-[#2c2a26] mt-[3px] mb-[6px] whitespace-pre-wrap break-words">
-          {comment.content}
-        </p>
-        <div className="flex items-center gap-[12px]">
-          {canReply && (
-            <button
-              type="button"
-              onClick={onToggleReply}
-              className="text-[11.5px] text-[#8a887f] cursor-pointer"
-            >
-              {isReplying ? "답글 취소" : "답글"}
-            </button>
-          )}
-          {canDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-[11.5px] text-[#b64a3f] cursor-pointer"
-            >
-              삭제
-            </button>
-          )}
-        </div>
+        {editing ? (
+          <div className="mt-[6px]">
+            <CommentForm
+              placeholder="댓글 수정"
+              initialValue={comment.content}
+              submitLabel="저장"
+              submittingLabel="저장 중…"
+              onSubmit={handleEditSubmit}
+              onCancel={() => setEditing(false)}
+              autoFocus
+            />
+          </div>
+        ) : (
+          <>
+            <p className="text-[13.5px] leading-[1.6] text-[#2c2a26] mt-[3px] mb-[6px] whitespace-pre-wrap break-words">
+              {comment.content}
+            </p>
+            <div className="flex items-center gap-[12px]">
+              {canReply && (
+                <button
+                  type="button"
+                  onClick={onToggleReply}
+                  className="text-[11.5px] text-[#8a887f] cursor-pointer"
+                >
+                  {isReplying ? "답글 취소" : "답글"}
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-[11.5px] text-[#8a887f] cursor-pointer"
+                >
+                  수정
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="text-[11.5px] text-[#b64a3f] cursor-pointer"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 export function CommentSection({ postId }: { postId: string }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { showToast } = useToast();
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -215,18 +288,39 @@ export function CommentSection({ postId }: { postId: string }) {
         content,
         authorId: user.uid,
         authorName: user.displayName || user.email || "익명",
-        authorPhotoURL: user.photoURL,
+        // `profile.photoURL` (the live Firestore doc) rather than `user.photoURL` (the Firebase
+        // Auth record, which /profile/edit never touches) — using the latter meant every comment
+        // from someone who'd changed their avatar after signup kept showing their old/blank photo.
+        authorPhotoURL: profile?.photoURL ?? null,
       });
       setReplyingTo(null);
+      showToast(parentId ? "답글이 등록되었습니다." : "댓글이 등록되었습니다.");
     } catch (err) {
       console.error("[comments] post failed", err);
       showToast("댓글 작성에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
+      throw err; // keeps the typed text in the form instead of clearing it on a failed post
+    }
+  }
+
+  async function handleEdit(commentId: string, content: string) {
+    try {
+      await updateComment(commentId, content);
+      showToast("댓글이 수정되었습니다.");
+    } catch (err) {
+      console.error("[comments] edit failed", err);
+      showToast("댓글 수정에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
+      throw err; // keeps the row in edit mode with the typed text instead of silently reverting
     }
   }
 
   async function handleDelete(commentId: string) {
+    // Sensitive/irreversible action — confirm before deleting, same convention as post/account
+    // deletion elsewhere in the app.
+    const confirmed = window.confirm("댓글을 삭제하시겠습니까? 답글이 있다면 함께 삭제됩니다.");
+    if (!confirmed) return;
     try {
       await deleteCommentCascade(postId, commentId);
+      showToast("댓글이 삭제되었습니다.");
     } catch (err) {
       console.error("[comments] delete failed", err);
       showToast("댓글 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
@@ -254,11 +348,13 @@ export function CommentSection({ postId }: { postId: string }) {
           <div key={root.id} className="flex flex-col gap-[12px]">
             <CommentRow
               comment={root}
+              canEdit={user?.uid === root.authorId}
               canDelete={user?.uid === root.authorId}
               canReply={canPost}
               isReplying={replyingTo === root.id}
               onToggleReply={() => setReplyingTo((cur) => (cur === root.id ? null : root.id))}
               onDelete={() => handleDelete(root.id)}
+              onEdit={(content) => handleEdit(root.id, content)}
             />
             {replyingTo === root.id && (
               <div className="ml-[40px]">
@@ -278,11 +374,13 @@ export function CommentSection({ postId }: { postId: string }) {
               <div key={reply.id} className="ml-[40px] flex flex-col gap-[12px]">
                 <CommentRow
                   comment={reply}
+                  canEdit={user?.uid === reply.authorId}
                   canDelete={user?.uid === reply.authorId}
                   canReply={canPost}
                   isReplying={replyingTo === reply.id}
                   onToggleReply={() => setReplyingTo((cur) => (cur === reply.id ? null : reply.id))}
                   onDelete={() => handleDelete(reply.id)}
+                  onEdit={(content) => handleEdit(reply.id, content)}
                 />
                 {replyingTo === reply.id && (
                   <div className="ml-[40px]">
