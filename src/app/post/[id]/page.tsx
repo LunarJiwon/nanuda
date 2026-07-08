@@ -80,6 +80,20 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             />
           </div>
           <h1 className="font-bold text-[30px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
+          {authorHandle ? (
+            <Link
+              href={`/profile/${authorHandle}`}
+              className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e] mb-[10px]"
+            >
+              <Avatar src={author?.photoURL} name={post.authorName} size={20} />
+              {post.authorName}
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] mb-[10px]">
+              <Avatar src={author?.photoURL} name={post.authorName} size={20} />
+              {post.authorName}
+            </span>
+          )}
           <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.excerpt}</p>
           <div className="flex items-center gap-[10px] mb-6">
             <span className="text-[12px] text-[#8a887f]">
@@ -95,6 +109,17 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               />
             </div>
           </div>
+
+          {post.visibility === "subscribers" ? (
+            <PremiumPostBody
+              postId={post.id}
+              authorId={post.authorId}
+              authorName={post.authorName}
+              price={author?.subscriptionPrice ?? 0}
+            />
+          ) : (
+            post.content && <PostBody content={post.content} />
+          )}
         </>
       )}
 

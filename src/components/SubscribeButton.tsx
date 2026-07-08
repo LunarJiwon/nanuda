@@ -11,6 +11,7 @@ import {
   startSubscriptionPayment,
   type SubscriptionStatus,
 } from "@/lib/subscription-client";
+import { TOSS_ENABLED } from "@/lib/toss";
 
 /** Shown on an author's profile when they've set a subscriptionPrice. Hidden entirely on the
  * author's own profile — same self-subscribe guard as SupportButton, enforced again server-side
@@ -35,7 +36,7 @@ export function SubscribeButton({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || user.isAnonymous || user.uid === authorId) return;
+    if (!TOSS_ENABLED || !user || user.isAnonymous || user.uid === authorId) return;
     let cancelled = false;
     getMySubscription(authorId, user.uid)
       .then((sub) => {
@@ -57,6 +58,18 @@ export function SubscribeButton({
       <Link href="/settings/subscription" className="text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e] underline">
         구독료 월 {price.toLocaleString()}원 · 구독 관리하기
       </Link>
+    );
+  }
+
+  if (!TOSS_ENABLED) {
+    return (
+      <button
+        type="button"
+        onClick={() => showToast("구독하기는 준비 중입니다. 조금만 기다려주세요.")}
+        className="text-[12.5px] font-medium text-[#b0aea6] border border-[#e0ded8] bg-white px-[13px] py-[7px] rounded-[2px] cursor-pointer"
+      >
+        구독하기 · 준비중
+      </button>
     );
   }
 

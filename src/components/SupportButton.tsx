@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { startSupportPayment, SUPPORT_AMOUNTS, type SupportAmount } from "@/lib/support-client";
+import { TOSS_ENABLED } from "@/lib/toss";
 
 /**
  * Reader→writer 응원(tip) button, shown near LikeButton on a post's detail page. Hidden entirely
@@ -30,6 +31,21 @@ export function SupportButton({
   const [submitting, setSubmitting] = useState(false);
 
   if (user && user.uid === authorId) return null;
+
+  if (!TOSS_ENABLED) {
+    return (
+      <button
+        type="button"
+        onClick={() => showToast("응원하기는 준비 중입니다. 조금만 기다려주세요.")}
+        className="inline-flex items-center gap-[5px] text-[12.5px] px-[10px] py-[4px] rounded-[2px] border border-[#e0ded8] bg-white text-[#b0aea6] cursor-pointer"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2v20M2 12h20" />
+        </svg>
+        응원하기 · 준비중
+      </button>
+    );
+  }
 
   function handleOpen() {
     if (!user || user.isAnonymous) {
