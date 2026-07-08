@@ -12,34 +12,23 @@ import { formatDate } from "@/lib/date";
 import type { Post } from "@/lib/types";
 
 /** Photo-less posts (any category, not just 일상) get the same title/excerpt/date-readtime layout
- * as a photo card, just without the image-shaped box — mirrors /daily's TextOnlyCard treatment
- * (see that file's comment for why: a generic placeholder box reads as a broken image for a post
- * that never had one). */
+ * as a photo card, just without the image itself. The image slot's height is still reserved (a
+ * blank box, not the diagonal-stripe placeholder) so every card in the grid ends up the same total
+ * height — relying on flex-1/mt-auto to push the date down to match a stretched grid row instead
+ * made a card's date position depend on whether its particular row happened to contain a photo
+ * post, so the same post looked different from one page load to the next. */
 function PostCard({ post }: { post: Post }) {
-  if (!post.coverImageURL) {
-    return (
-      // `flex-1` fills the grid row's stretched height (CSS Grid's default align-items:stretch)
-      // since this is the Link's only child when there's no cover image; `mt-auto` on the date
-      // then pins it to the bottom, lining up with a photo card's date in the same row.
-      <div className="flex-1 flex flex-col gap-[6px]">
-        <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
-        <span className="text-[13px] text-[#77756c] leading-[1.55] line-clamp-4">{post.excerpt}</span>
-        <span className="text-[11.5px] text-[#b0aea6] mt-auto pt-[2px]">
-          {formatDate(post.publishedAt)} · {post.readTime}
-        </span>
-      </div>
-    );
-  }
   return (
     <>
-      <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
-      {/* flex-1 + mt-auto on the date: pins it to the bottom of the grid row's stretched height
-          regardless of excerpt length, so a photo-less card's date lines up with a photo card's —
-          see the identical pattern (and rationale) in /daily/page.tsx's TextOnlyCard. */}
-      <span className="flex-1 flex flex-col gap-[6px]">
+      {post.coverImageURL ? (
+        <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
+      ) : (
+        <div className="w-full" style={{ aspectRatio: "4/3" }} />
+      )}
+      <span className="flex flex-col gap-[6px]">
         <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
         <span className="text-[13px] text-[#77756c] leading-[1.55] line-clamp-4">{post.excerpt}</span>
-        <span className="text-[11.5px] text-[#b0aea6] mt-auto pt-[2px]">
+        <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
           {formatDate(post.publishedAt)} · {post.readTime}
         </span>
       </span>
