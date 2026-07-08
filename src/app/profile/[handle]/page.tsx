@@ -8,10 +8,32 @@ import { getFollowCounts } from "@/lib/follows";
 import { CoverImage } from "@/components/CoverImage";
 import { Avatar } from "@/components/Avatar";
 import { ProfileEditButton } from "@/components/ProfileEditButton";
-import { FollowButton } from "@/components/FollowButton";
+import { FollowSection } from "@/components/FollowSection";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { ProfileWelcomeTutorial } from "@/components/ProfileWelcomeTutorial";
 import { formatDate } from "@/lib/date";
+import type { Post } from "@/lib/types";
+
+/** Photo-less 일상 posts get the same title/excerpt/date-readtime layout as a photo card, just
+ * without the image-shaped box — mirrors /daily's TextOnlyCard treatment (see that file's comment
+ * for why: a generic placeholder box reads as a broken image for a post that never had one). */
+function PostCard({ post }: { post: Post }) {
+  const showsCover = post.category !== "daily" || post.coverImageURL;
+  return (
+    <>
+      {showsCover && (
+        <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
+      )}
+      <span className="flex flex-col gap-[6px]">
+        <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
+        <span className="text-[13px] text-[#77756c] leading-[1.55] line-clamp-4">{post.excerpt}</span>
+        <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+          {formatDate(post.publishedAt)} · {post.readTime}
+        </span>
+      </span>
+    </>
+  );
+}
 
 export const revalidate = 60;
 
@@ -53,17 +75,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
           <div className="flex flex-col gap-[4px]">
             <span className="text-[21px] font-bold tracking-[-0.02em]">{user.displayName || "이름 없음"}</span>
             <span className="font-mono text-[13px] text-[#8a887f]">@{handle}</span>
-            <div className="flex items-center gap-[10px] text-[12.5px] text-[#8a887f]">
-              <Link href={`/profile/${handle}/following`} className="hover:text-[#0e0e0e]">
-                팔로잉 <span className="font-mono">{followCounts.following}</span>
-              </Link>
-              <Link href={`/profile/${handle}/followers`} className="hover:text-[#0e0e0e]">
-                팔로워 <span className="font-mono">{followCounts.followers}</span>
-              </Link>
-            </div>
+            <FollowSection
+              authorId={user.uid}
+              handle={handle}
+              initialFollowingCount={followCounts.following}
+              initialFollowersCount={followCounts.followers}
+            />
           </div>
           <div className="ml-auto flex items-center gap-[8px]">
-            <FollowButton authorId={user.uid} />
             {Boolean(user.subscriptionPrice) && (
               <SubscribeButton authorId={user.uid} authorName={user.displayName} price={user.subscriptionPrice!} />
             )}
@@ -123,21 +142,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                   href={`/post/${post.id}`}
                   className="text-left flex flex-col gap-[12px] text-[#0e0e0e]"
                 >
-                  <CoverImage
-                    src={post.coverImageURL}
-                    alt={post.title}
-                    aspectRatio="4/3"
-                    placeholderLabel="post"
-                  />
-                  <span className="flex flex-col gap-[6px]">
-                    <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">
-                      {post.title}
-                    </span>
-                    <span className="text-[13px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-                    <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
-                      {formatDate(post.publishedAt)} · {post.readTime}
-                    </span>
-                  </span>
+                  <PostCard post={post} />
                 </Link>
               ))}
             </div>

@@ -24,6 +24,7 @@ export function BlockRow({
   onContentChange,
   onFocusField,
   onEnterNewBlock,
+  onBackspaceEmpty,
   registerRef,
   onImageSelect,
   onLanguageChange,
@@ -51,6 +52,10 @@ export function BlockRow({
    * Enter is left to fall through to the field's own default (a real line break). Not wired up for
    * the "code" block — see the comment on handleBlockEnterNewBlock in page.tsx. */
   onEnterNewBlock: () => void;
+  /** Backspace on an already-empty field deletes this block and moves focus to the end of the
+   * previous one, matching the Notion-style convention (no-op on the very first block — see
+   * handleBackspaceEmpty in page.tsx). */
+  onBackspaceEmpty: () => void;
   registerRef: FieldRefSetter;
   onImageSelect: (file: File) => void;
   /** "code" blocks only. */
@@ -59,7 +64,14 @@ export function BlockRow({
 }) {
   // Plain Enter -> new block; Shift+Enter falls through to the field's own default (a real line
   // break in the multi-line block types; a no-op in the single-line ones, same as any plain input).
+  // Backspace on an already-empty field deletes the block instead of doing nothing.
   function handleFieldKeyDown(e: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) {
+    if (e.key === "Backspace") {
+      if (block.content.trim() !== "") return;
+      e.preventDefault();
+      onBackspaceEmpty();
+      return;
+    }
     if (e.key !== "Enter" || e.shiftKey) return;
     e.preventDefault();
     onEnterNewBlock();
@@ -168,13 +180,20 @@ export function BlockRow({
                 ))}
               </div>
             </div>
-            {/* No onEnterNewBlock here on purpose — writing code needs Enter to insert a newline
-                on every line, not split into a new block. */}
+            {/* Enter is left alone here on purpose — writing code needs it to insert a newline on
+                every line, not split into a new block. Backspace-when-empty still applies, so a
+                stray empty code block can be dismissed the same way as any other. */}
             <AutoTextarea
               innerRef={registerRef}
               value={block.content}
               onChange={(e) => onContentChange(e.target.value)}
               onFocus={onFocusField}
+              onKeyDown={(e) => {
+                if (e.key === "Backspace" && block.content.trim() === "") {
+                  e.preventDefault();
+                  onBackspaceEmpty();
+                }
+              }}
               placeholder="// 코드를 입력하세요"
               className={`w-full font-mono text-[12.5px] leading-[1.7] bg-transparent outline-none ${
                 isLight

@@ -245,6 +245,22 @@ export default function EditorPage() {
     });
   }
 
+  /** Backspace on an already-empty block field (see BlockRow's handleFieldKeyDown) deletes that
+   * block and moves focus to the end of the previous one — a no-op on the first block, since
+   * there's nothing before it to fall back into. */
+  function handleBackspaceEmpty(id: number) {
+    const idx = blocks.findIndex((b) => b.id === id);
+    if (idx <= 0) return;
+    const prevBlock = blocks[idx - 1];
+    removeBlock(id);
+    requestAnimationFrame(() => {
+      const el = fieldRefs.current.get(`block:${prevBlock.id}`);
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }
+
   function removeBlock(id: number) {
     setBlocks((bs) => {
       if (bs.length <= 1) return bs;
@@ -699,6 +715,7 @@ export default function EditorPage() {
               onDragEnd={handleBlockDragEnd}
               onInsert={(type) => insertAfter(block.id, type)}
               onEnterNewBlock={() => handleBlockEnterNewBlock(block.id, block.type)}
+              onBackspaceEmpty={() => handleBackspaceEmpty(block.id)}
               onContentChange={(content) =>
                 setBlocks((bs) => bs.map((b) => (b.id === block.id ? { ...b, content } : b)))
               }

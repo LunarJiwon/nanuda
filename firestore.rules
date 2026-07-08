@@ -185,6 +185,9 @@ service cloud.firestore {
     // counted. The doc id must match the uid making the request, so nobody can inflate another
     // visitor's view.
     match /postViews/{viewId} {
+      // `recordView`'s dedup transaction reads this doc before deciding whether to create it and
+      // bump the counter — without `get`, that read itself was rejected, breaking view tracking.
+      allow get: if true;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && viewId == request.resource.data.postId + '_' + request.auth.uid;

@@ -7,8 +7,16 @@ import { useToast } from "@/context/toast-context";
 import { followUser, isFollowing, unfollowUser } from "@/lib/follows-client";
 
 /** Free "새 글 알림 받기" toggle, distinct from the paid SubscribeButton — hidden on the author's
- * own profile, same self-guard pattern as SubscribeButton. */
-export function FollowButton({ authorId }: { authorId: string }) {
+ * own profile, same self-guard pattern as SubscribeButton. `onToggle` fires only after a
+ * successful create/delete, so a caller (FollowSection) can bump a locally-displayed follower
+ * count without subscribing to live Firestore counts. */
+export function FollowButton({
+  authorId,
+  onToggle,
+}: {
+  authorId: string;
+  onToggle?: (nowFollowing: boolean) => void;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -44,9 +52,11 @@ export function FollowButton({ authorId }: { authorId: string }) {
       if (following) {
         await unfollowUser(user.uid, authorId);
         setFollowing(false);
+        onToggle?.(false);
       } else {
         await followUser(user.uid, authorId);
         setFollowing(true);
+        onToggle?.(true);
       }
     } catch (err) {
       console.error("[follow] toggle failed", err);
