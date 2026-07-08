@@ -95,8 +95,10 @@ export function Header() {
             글쓰기
           </Link>
           {loading && (
+            // -mt-px matches the logged-in avatar button below so swapping from this skeleton to
+            // the real avatar once auth resolves doesn't visibly shift by that 1px correction.
             <span
-              className="ml-[12px] w-[32px] h-[32px] rounded-full bg-[#efeee9] animate-pulse"
+              className="ml-[12px] -mt-px w-[32px] h-[32px] rounded-full bg-[#efeee9] animate-pulse"
               aria-hidden
             />
           )}
