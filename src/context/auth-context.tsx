@@ -97,13 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (!u) {
-        // No identity at all (fresh visitor, or just signed out): fall back to an anonymous
-        // sign-in so every visitor — logged in or not — has a stable uid to key the view-count
-        // dedup and like/comment gating off of. This fires onAuthStateChanged again with the
-        // anonymous user, so we intentionally don't setLoading(false) on this branch.
+        // No identity at all (fresh visitor, or just signed out): resolve the UI to "logged out"
+        // immediately rather than waiting on the network round-trip below — leaving `loading`
+        // true and `user` at its previous (stale, possibly just-logged-out) value here was the
+        // visible delay after clicking 로그아웃, since every gated page treats "still loading" as
+        // "keep showing the old state". A stable anonymous uid still matters for view-count dedup
+        // and like/comment gating, so one is established in the background regardless — once it
+        // resolves, onAuthStateChanged fires again and `user` updates to it then.
+        setUser(null);
+        setLoading(false);
         signInAnonymously(auth).catch((err) => {
           console.error("[auth] anonymous sign-in failed", err);
-          setLoading(false);
         });
         return;
       }
