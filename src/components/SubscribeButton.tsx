@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
@@ -52,12 +51,18 @@ export function SubscribeButton({
 
   // Self-subscribing makes no sense, so the actual button never renders here — but silently
   // showing nothing at all reads as "the subscription feature is broken" to the author looking at
-  // their own profile, so show a passive confirmation label instead.
+  // their own profile, so show a passive confirmation label instead. Styled and gated the same as
+  // the 구독하기/응원하기 buttons below (see TOSS_ENABLED) rather than as a plain text link, since it
+  // sits right next to those pill-shaped buttons on the profile page.
   if (user && user.uid === authorId) {
     return (
-      <Link href="/settings/subscription" className="text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e] underline">
+      <button
+        type="button"
+        onClick={() => showToast("구독 관리하기는 준비 중입니다. 조금만 기다려주세요.")}
+        className="text-[12.5px] font-medium text-[#b0aea6] border border-[#e0ded8] bg-white px-[13px] py-[7px] rounded-[2px] cursor-pointer"
+      >
         구독료 월 {price.toLocaleString()}원 · 구독 관리하기
-      </Link>
+      </button>
     );
   }
 

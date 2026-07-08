@@ -27,18 +27,18 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://nanuda.life"),
   // Not a title *template* — every page here already appends its own "· 나누다" suffix directly
   // (see post/[id]'s generateMetadata), and a template would double that up.
-  title: "나누다 · nanuda",
+  title: "나누다 - 생각 공유 플랫폼",
   description: SITE_DESCRIPTION,
   openGraph: {
     siteName: "나누다",
     type: "website",
     locale: "ko_KR",
-    title: "나누다 · nanuda",
+    title: "나누다 - 생각 공유 플랫폼",
     description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary",
-    title: "나누다 · nanuda",
+    title: "나누다 - 생각 공유 플랫폼",
     description: SITE_DESCRIPTION,
   },
 };
