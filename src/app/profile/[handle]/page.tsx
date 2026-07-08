@@ -1,40 +1,12 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getUserByHandle } from "@/lib/users";
 import { getPostsByAuthor } from "@/lib/posts";
 import { getFollowCounts } from "@/lib/follows";
-import { CoverImage } from "@/components/CoverImage";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileWelcomeTutorial } from "@/components/ProfileWelcomeTutorial";
-import { formatDate } from "@/lib/date";
-import type { Post } from "@/lib/types";
-
-/** Photo-less posts (any category, not just 일상) get the same title/excerpt/date-readtime layout
- * as a photo card, just without the image itself. The image slot's height is still reserved (a
- * blank box, not the diagonal-stripe placeholder) so every card in the grid ends up the same total
- * height — relying on flex-1/mt-auto to push the date down to match a stretched grid row instead
- * made a card's date position depend on whether its particular row happened to contain a photo
- * post, so the same post looked different from one page load to the next. */
-function PostCard({ post }: { post: Post }) {
-  return (
-    <>
-      {post.coverImageURL ? (
-        <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
-      ) : (
-        <div className="w-full" style={{ aspectRatio: "4/3" }} />
-      )}
-      <span className="flex flex-col gap-[6px]">
-        <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
-        <span className="text-[13px] text-[#77756c] leading-[1.55] line-clamp-4">{post.excerpt}</span>
-        <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
-          {formatDate(post.publishedAt)} · {post.readTime}
-        </span>
-      </span>
-    </>
-  );
-}
+import { ProfilePostList } from "./ProfilePostList";
 
 export const revalidate = 60;
 
@@ -108,21 +80,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         )}
 
         <div className="border-t border-[#e8e7e3] pt-[22px] pb-[50px]">
-          {posts.length === 0 ? (
-            <p className="text-center text-[#9a988f] text-[13px] py-10">아직 기록이 없습니다.</p>
-          ) : (
-            <div className="grid gap-[30px] [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
-              {posts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/post/${post.id}`}
-                  className="text-left flex flex-col gap-[12px] text-[#0e0e0e]"
-                >
-                  <PostCard post={post} />
-                </Link>
-              ))}
-            </div>
-          )}
+          <ProfilePostList posts={posts} />
         </div>
       </section>
     </>
