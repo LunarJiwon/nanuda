@@ -131,13 +131,17 @@ export function Header() {
             ref={profileMenuRef}
             className="absolute top-[56px] right-[24px] z-40 w-[220px] border border-[#e6e4de] bg-white rounded-[8px] shadow-[0_18px_40px_-16px_rgba(0,0,0,0.3)] p-[8px]"
           >
-            <div className="flex items-center gap-[10px] px-[8px] pt-[8px] pb-[12px] border-b border-[#f0eee9]">
+            <Link
+              href={profile?.handle ? `/profile/${profile.handle}` : "/onboarding"}
+              onClick={closeProfile}
+              className="flex items-center gap-[10px] px-[8px] pt-[8px] pb-[12px] border-b border-[#f0eee9] rounded-[5px] hover:bg-[#f4f2ee]"
+            >
               <Avatar src={profile?.photoURL} name={avatarName} size={38} />
               <span className="flex flex-col min-w-0">
                 <span className="text-[14px] font-semibold truncate">{user?.displayName || "이름 없음"}</span>
                 <span className="text-[12px] text-[#8a887f] truncate">{user?.email}</span>
               </span>
-            </div>
+            </Link>
             <Link
               href="/editor"
               onClick={closeProfile}
