@@ -19,11 +19,13 @@ export function PremiumPostBody({
   authorId,
   authorName,
   price,
+  variant = "default",
 }: {
   postId: string;
   authorId: string;
   authorName: string;
   price: number;
+  variant?: "default" | "art";
 }) {
   const { user, loading: authLoading } = useAuth();
   const [fetchState, setFetchState] = useState<AccessState>("loading");
@@ -60,7 +62,7 @@ export function PremiumPostBody({
   }
 
   if (state === "granted") {
-    return <PostBody content={content} />;
+    return <PostBody content={content} variant={variant} />;
   }
 
   return (

@@ -163,6 +163,22 @@ body {
   border-radius: 3px;
   margin: 20px 0;
 }
+
+/* Art category post detail only (see PostBody.tsx's `variant` prop) — each image reads as its own
+   "plate" with generous air around it and a thin gallery-mat border, rather than sitting in a
+   dense left-aligned article column like every other category. remark wraps a standalone
+   `![alt](url)` in its own <p>, so centering that paragraph is what centers the (inline) image. */
+.nanuda-prose--art p {
+  text-align: center;
+}
+.nanuda-prose--art img {
+  display: inline-block;
+  border: 1px solid #e5e3de;
+  margin: 44px 0;
+}
+.nanuda-prose--art p:first-child img {
+  margin-top: 0;
+}
 .nanuda-prose code {
   font-family: var(--font-mono);
   background: #f2f0ec;

@@ -25,9 +25,17 @@ function themeFromNode(node: Element | undefined): "light" | "dark" {
  * the author picked in the editor (`.hljs-theme-light`/`.hljs-theme-dark` in globals.css, applied
  * to the `<pre>` via CSS `:has()` since the theme is only known on the nested `<code>` node).
  */
-export function PostBody({ content }: { content: string }) {
+export function PostBody({
+  content,
+  variant = "default",
+}: {
+  content: string;
+  /** "art" centers text and gives images the gallery-plate treatment (see .nanuda-prose--art in
+   * globals.css) — used only by the art category's post detail page. */
+  variant?: "default" | "art";
+}) {
   return (
-    <div className="nanuda-prose">
+    <div className={`nanuda-prose ${variant === "art" ? "nanuda-prose--art" : ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeHighlight]}

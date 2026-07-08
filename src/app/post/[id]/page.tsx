@@ -95,65 +95,71 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   }).replace(/</g, "\\u003c");
 
   return (
-    <article className={`px-6 pt-10 pb-16 mx-auto ${isArt ? "max-w-[880px]" : "max-w-[720px]"}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-      <ViewTracker postId={post.id} />
-      <div className="flex items-center justify-between pb-6">
-        <Link href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">
-          ← {CATEGORY_LABEL[post.category]}로 돌아가기
-        </Link>
-        <PostActions postId={post.id} authorId={post.authorId} category={post.category} />
-      </div>
+    <div className={isArt ? "bg-[#faf9f7] min-h-full" : undefined}>
+      <article className={`px-6 pt-10 pb-16 mx-auto ${isArt ? "max-w-[880px]" : "max-w-[720px]"}`}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+        <ViewTracker postId={post.id} />
+        <div className="flex items-center justify-between pb-6">
+          <Link href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">
+            ← {CATEGORY_LABEL[post.category]}로 돌아가기
+          </Link>
+          <PostActions postId={post.id} authorId={post.authorId} category={post.category} />
+        </div>
 
-      {isArt && (
-        <>
-          {/* Title leads, then every photo attached shows inline in the body in order (no single
-              image pulled out as a "cover" anymore — that hid everything past the first photo on
-              a multi-photo post), and the author/engagement row moves below all of it. */}
-          <h1 className="font-bold text-[28px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
-          {post.subtitle && <p className="text-[13px] text-[#8a887f] mb-[20px]">{post.subtitle}</p>}
-
-          {post.visibility === "subscribers" ? (
-            <PremiumPostBody
-              postId={post.id}
-              authorId={post.authorId}
-              authorName={post.authorName}
-              price={author?.subscriptionPrice ?? 0}
-            />
-          ) : (
-            post.content && <PostBody content={post.content} />
-          )}
-
-          <div className="flex items-center gap-[10px] mt-[26px] pt-[20px] border-t border-[#e8e7e3]">
-            {authorHandle ? (
-              <Link
-                href={`/profile/${authorHandle}`}
-                className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c] hover:text-[#0e0e0e]"
-              >
-                <Avatar src={author?.photoURL} name={post.authorName} size={26} />
-                {post.authorName}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c]">
-                <Avatar src={author?.photoURL} name={post.authorName} size={26} />
-                {post.authorName}
-              </span>
+        {isArt && (
+          <>
+            {/* Centered "gallery placard" treatment throughout — title, every photo (see
+                .nanuda-prose--art in globals.css), and the closing author/engagement stack — to
+                read as a distinct exhibition-style layout rather than a plain article. */}
+            <h1 className="font-bold text-[28px] leading-[1.15] tracking-[-0.03em] mb-[8px] text-center">
+              {post.title}
+            </h1>
+            {post.subtitle && (
+              <p className="text-[13px] text-[#8a887f] mb-[20px] text-center">{post.subtitle}</p>
             )}
-            <span className="text-[12px] text-[#8a887f]">
-              조회 <span className="font-mono">{post.viewCount}</span>
-            </span>
-            <div className="ml-auto flex items-center gap-[10px]">
-              <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
-              <SupportButton
+
+            {post.visibility === "subscribers" ? (
+              <PremiumPostBody
                 postId={post.id}
-                postTitle={post.title}
                 authorId={post.authorId}
                 authorName={post.authorName}
+                price={author?.subscriptionPrice ?? 0}
+                variant="art"
               />
+            ) : (
+              post.content && <PostBody content={post.content} variant="art" />
+            )}
+
+            <div className="flex flex-col items-center gap-[14px] mt-[36px] pt-[26px] border-t border-[#e8e7e3]">
+              {authorHandle ? (
+                <Link
+                  href={`/profile/${authorHandle}`}
+                  className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c] hover:text-[#0e0e0e]"
+                >
+                  <Avatar src={author?.photoURL} name={post.authorName} size={26} />
+                  {post.authorName}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-[7px] text-[14.5px] font-medium text-[#54524c]">
+                  <Avatar src={author?.photoURL} name={post.authorName} size={26} />
+                  {post.authorName}
+                </span>
+              )}
+              <span className="text-[12px] text-[#8a887f]">
+                조회 <span className="font-mono">{post.viewCount}</span>
+              </span>
+              <div className="flex items-center gap-[10px]">
+                <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
+                <SupportButton
+                  postId={post.id}
+                  postTitle={post.title}
+                  authorId={post.authorId}
+                  authorName={post.authorName}
+                />
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
 
       {isQuote && (
         <div className="pt-6 pb-2 text-center">
@@ -255,7 +261,8 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         </>
       )}
 
-      <CommentSection postId={post.id} postAuthorId={post.authorId} />
-    </article>
+        <CommentSection postId={post.id} postAuthorId={post.authorId} />
+      </article>
+    </div>
   );
 }

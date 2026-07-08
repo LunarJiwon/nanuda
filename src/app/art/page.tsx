@@ -15,7 +15,7 @@ export default async function ArtPage() {
   const posts = await getPostsByCategory("art");
 
   return (
-    <section className="min-h-full">
+    <section className="min-h-full bg-[#faf9f7]">
       <div className="px-6 pt-14 pb-2 max-w-[1120px] mx-auto">
         <h1 className="font-bold text-[clamp(32px,4.6vw,48px)] leading-[1.05] tracking-[-0.035em] mb-[14px]">예술</h1>
         <p className="text-[15px] text-[#6b695f] max-w-[46ch] leading-[1.6] m-0">벽에 걸린 작품을 천천히 지나며 보세요.</p>
@@ -24,9 +24,13 @@ export default async function ArtPage() {
         {posts.length === 0 ? (
           <p className="text-center text-[#9a988f] text-[13px] py-10">아직 기록이 없습니다.</p>
         ) : (
-          <div className="grid gap-x-8 gap-y-[34px] [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+          <div className="grid gap-x-8 gap-y-[40px] [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
             {posts.map((post) => (
-              <Link key={post.id} href={`/post/${post.id}`} className="flex flex-col gap-[12px] text-[#0e0e0e]">
+              <Link
+                key={post.id}
+                href={`/post/${post.id}`}
+                className="flex flex-col items-center gap-[12px] text-[#0e0e0e] text-center"
+              >
                 <CoverImage
                   src={post.coverImageURL}
                   alt={post.title}
@@ -34,7 +38,7 @@ export default async function ArtPage() {
                   placeholderLabel={post.subtitle || "artwork"}
                   colorA="#e4e2dc"
                   colorB="#eeece7"
-                  className="!border-0 rounded-[3px]"
+                  className="rounded-none"
                 />
                 <span className="flex flex-col gap-[3px]">
                   <span className="text-[14px] font-semibold leading-[1.3]">{post.title}</span>
