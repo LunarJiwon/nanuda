@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPostById } from "@/lib/posts";
+import { getUserById } from "@/lib/users";
 import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
 import { CoverImage } from "@/components/CoverImage";
@@ -40,6 +41,11 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const post = await getPostById(id);
   if (!post) notFound();
+
+  // Missing handle = no public profile yet (e.g. pre-handle accounts) — same "treat as no link"
+  // convention as Header.tsx's profile dropdown and users.ts.
+  const author = await getUserById(post.authorId);
+  const authorHandle = author?.handle;
 
   const isArt = post.category === "art";
   const isQuote = post.category === "quote";
@@ -115,12 +121,21 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             {post.title}
           </h1>
           <div className="flex flex-wrap gap-[8px] items-center text-[12.5px] text-[#8a887f] border-b border-[#e8e7e3] pb-[22px]">
-            <span className="inline-flex items-center gap-[6px]">
-              <span className="w-[22px] h-[22px] rounded-full bg-[#0e0e0e] text-white flex items-center justify-center text-[10px] font-semibold">
-                {(post.authorName || "나").charAt(0)}
+            {authorHandle ? (
+              <Link href={`/profile/${authorHandle}`} className="inline-flex items-center gap-[6px] hover:text-[#0e0e0e]">
+                <span className="w-[22px] h-[22px] rounded-full bg-[#0e0e0e] text-white flex items-center justify-center text-[10px] font-semibold">
+                  {(post.authorName || "나").charAt(0)}
+                </span>
+                {post.authorName}
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-[6px]">
+                <span className="w-[22px] h-[22px] rounded-full bg-[#0e0e0e] text-white flex items-center justify-center text-[10px] font-semibold">
+                  {(post.authorName || "나").charAt(0)}
+                </span>
+                {post.authorName}
               </span>
-              {post.authorName}
-            </span>
+            )}
             <span>·</span>
             <span>{formatDate(post.publishedAt)}</span>
             <span>·</span>

@@ -112,7 +112,11 @@ export function Header() {
             <button
               ref={profileButtonRef}
               onClick={() => setProfileOpen((v) => !v)}
-              className="ml-[12px] rounded-full cursor-pointer"
+              // Mathematically centered against the 글쓰기 button already (same flex row,
+              // items-center), but a circle sitting next to a hard-edged rectangle reads as
+              // sitting slightly low even when its bounding box is perfectly centered — a common
+              // optical-alignment correction, not a layout bug.
+              className="ml-[12px] -mt-px rounded-full cursor-pointer"
               aria-label="프로필 메뉴"
             >
               <Avatar src={profile?.photoURL} name={avatarName} size={32} />
