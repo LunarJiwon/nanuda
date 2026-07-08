@@ -14,6 +14,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useProgress } from "@/context/progress-context";
 import { BlockMenu } from "@/components/BlockMenu";
 import { BlockRow } from "./BlockRow";
 import {
@@ -80,6 +81,7 @@ function EditorPageContent() {
   const editId = searchParams.get("edit");
   const { user, profile, loading } = useAuth();
   const { showToast } = useToast();
+  const { withProgress } = useProgress();
 
   const [category, setCategory] = useState<Category>("daily");
   const [title, setTitle] = useState("");
@@ -589,30 +591,32 @@ function EditorPageContent() {
     }
     setPublishing(true);
     try {
-      const { payload, fullContent } = buildPostPayload(
-        "published",
-        user.uid,
-        user.displayName || user.email || "익명"
-      );
-      const isEditingPublished = originalStatus === "published";
-      const id = draftId ?? (await createPost(payload));
-      if (draftId) {
-        // Editing an already-published post keeps its original publishedAt (a plain field
-        // update); only an actual draft->published promotion bumps it to now.
-        if (isEditingPublished) await updateDraft(draftId, payload);
-        else await updateDraftAsPublished(draftId, payload);
-      }
-      if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
-      publishedRef.current = true;
-      // Best-effort — a missed revalidation just means the list page is stale for up to the
-      // normal 60s window instead of instant, not a broken publish.
-      fetch("/api/revalidate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paths: ["/", `/${category}`, "/archive"] }),
-      }).catch(() => {});
-      showToast(isEditingPublished ? "수정되었습니다." : "발행되었습니다.");
-      router.push(`/post/${id}`);
+      await withProgress(async () => {
+        const { payload, fullContent } = buildPostPayload(
+          "published",
+          user.uid,
+          user.displayName || user.email || "익명"
+        );
+        const isEditingPublished = originalStatus === "published";
+        const id = draftId ?? (await createPost(payload));
+        if (draftId) {
+          // Editing an already-published post keeps its original publishedAt (a plain field
+          // update); only an actual draft->published promotion bumps it to now.
+          if (isEditingPublished) await updateDraft(draftId, payload);
+          else await updateDraftAsPublished(draftId, payload);
+        }
+        if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
+        publishedRef.current = true;
+        // Best-effort — a missed revalidation just means the list page is stale for up to the
+        // normal 60s window instead of instant, not a broken publish.
+        fetch("/api/revalidate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths: ["/", `/${category}`, "/archive"] }),
+        }).catch(() => {});
+        showToast(isEditingPublished ? "수정되었습니다." : "발행되었습니다.");
+        router.push(`/post/${id}`);
+      });
     } catch (err) {
       console.error("[editor] publish failed", err);
       showToast("발행에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
@@ -636,24 +640,26 @@ function EditorPageContent() {
     }
     setSavingDraft(true);
     try {
-      const { payload, fullContent } = buildPostPayload(
-        "draft",
-        user.uid,
-        user.displayName || user.email || "익명"
-      );
-      let id = draftId;
-      if (id) {
-        await updateDraft(id, payload);
-      } else {
-        id = await createPost(payload);
-        setDraftId(id);
-      }
-      if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
-      // The draft doc now references whatever images are currently in the blocks, so the
-      // abandon-cleanup effect shouldn't sweep them even if the editor is closed without
-      // publishing afterward.
-      publishedRef.current = true;
-      showToast("임시저장되었습니다.");
+      await withProgress(async () => {
+        const { payload, fullContent } = buildPostPayload(
+          "draft",
+          user.uid,
+          user.displayName || user.email || "익명"
+        );
+        let id = draftId;
+        if (id) {
+          await updateDraft(id, payload);
+        } else {
+          id = await createPost(payload);
+          setDraftId(id);
+        }
+        if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
+        // The draft doc now references whatever images are currently in the blocks, so the
+        // abandon-cleanup effect shouldn't sweep them even if the editor is closed without
+        // publishing afterward.
+        publishedRef.current = true;
+        showToast("임시저장되었습니다.");
+      });
     } catch (err) {
       console.error("[editor] save draft failed", err);
       showToast("임시저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");

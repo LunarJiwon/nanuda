@@ -75,6 +75,12 @@ export interface AppUser {
    * don't offer subscriptions — SubscribeButton and the editor's 구독자 전용 toggle both hide
    * behind this. Author-set, not platform-fixed (see the priority-2 monetization plan). */
   subscriptionPrice?: number;
+  /** Per-event opt-outs for the notification bell — absent/undefined means enabled, matching
+   * every existing account that predates this setting (see /settings). */
+  notificationSettings?: {
+    comment?: boolean;
+    like?: boolean;
+  };
   createdAt: string;
 }
 
@@ -112,7 +118,14 @@ export interface Follow {
   createdAt: string;
 }
 
-export type NotificationType = "support" | "subscription_started" | "subscription_canceled" | "new_subscriber_post";
+export type NotificationType =
+  | "support"
+  | "subscription_started"
+  | "subscription_canceled"
+  | "new_subscriber_post"
+  | "comment"
+  | "reply"
+  | "like";
 
 /** `notifications/{uid}/items/{id}` — always written by a Cloud Function (a client can only read
  * its own and toggle `read`), surfaced via the header's notification bell. */

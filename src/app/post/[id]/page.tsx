@@ -86,7 +86,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               조회 <span className="font-mono">{post.viewCount}</span>
             </span>
             <div className="ml-auto flex items-center gap-[10px]">
-              <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+              <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
               <SupportButton
                 postId={post.id}
                 postTitle={post.title}
@@ -106,7 +106,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           </h1>
           <p className="text-[14px] text-[#8a887f] m-0">— {post.excerpt}</p>
           <div className="flex items-center justify-center gap-[10px] mt-[18px]">
-            <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+            <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
             <SupportButton
               postId={post.id}
               postTitle={post.title}
@@ -149,7 +149,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               <TagChip key={tag} tag={tag} size="sm" />
             ))}
             <div className="ml-auto flex items-center gap-[10px]">
-              <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+              <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
               <SupportButton
                 postId={post.id}
                 postTitle={post.title}
@@ -198,7 +198,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         </>
       )}
 
-      <CommentSection postId={post.id} />
+      <CommentSection postId={post.id} postAuthorId={post.authorId} />
     </article>
   );
 }

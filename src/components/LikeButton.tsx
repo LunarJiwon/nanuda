@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, isRealUser, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { hasLiked, toggleLike } from "@/lib/likes-client";
+import { notifyUser } from "@/lib/notify-client";
 
 /**
  * Like toggle shown near the post meta row. Requires a real, non-anonymous signed-in user —
@@ -13,7 +14,16 @@ import { hasLiked, toggleLike } from "@/lib/likes-client";
  * (firestore.rules' `isVerifiedUser()` on `likes/{uid}` create) — checked here first so an
  * unverified real user gets a clear inline message instead of a silent rules rejection.
  */
-export function LikeButton({ postId, initialLikeCount }: { postId: string; initialLikeCount: number }) {
+export function LikeButton({
+  postId,
+  initialLikeCount,
+  authorId,
+}: {
+  postId: string;
+  initialLikeCount: number;
+  /** Who gets notified on a new like — omit to skip notifying (e.g. not yet wired up somewhere). */
+  authorId?: string;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -66,6 +76,16 @@ export function LikeButton({ postId, initialLikeCount }: { postId: string; initi
     try {
       const nowLiked = await toggleLike(postId, user.uid);
       setLiked(nowLiked);
+      if (nowLiked && authorId) {
+        notifyUser({
+          recipientId: authorId,
+          actorId: user.uid,
+          type: "like",
+          title: `${user.displayName || user.email || "누군가"}님이 좋아요를 눌렀습니다`,
+          body: "",
+          link: `/post/${postId}`,
+        });
+      }
     } catch (err) {
       console.error("[likes] toggle failed", err);
       setLiked(prevLiked);

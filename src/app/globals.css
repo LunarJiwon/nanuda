@@ -63,6 +63,21 @@ body {
   animation: toastin 0.22s ease both;
 }
 
+@keyframes topbar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(50%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.animate-topbar-slide {
+  animation: topbar-slide 1.1s ease-in-out infinite;
+}
+
 @keyframes appfade {
   from {
     opacity: 0;

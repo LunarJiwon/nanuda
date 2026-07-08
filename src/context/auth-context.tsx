@@ -128,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: data.email ?? null,
           handle: data.handle ?? undefined,
           subscriptionPrice: data.subscriptionPrice || undefined,
+          notificationSettings: data.notificationSettings ?? undefined,
           bio: data.bio ?? "",
           links: data.links ?? {},
           createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),

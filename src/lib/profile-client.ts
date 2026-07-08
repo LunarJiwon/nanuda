@@ -108,6 +108,7 @@ export interface UpdateProfileInput {
   /** null clears it (author stops offering subscriptions to new subscribers — existing ones are
    * unaffected, see the Subscription type doc's price-snapshot note). */
   subscriptionPrice?: number | null;
+  notificationSettings?: { comment?: boolean; like?: boolean };
 }
 
 /** Owner-only profile edit (`/profile/edit`). Handles are immutable for v1 — never written here. */

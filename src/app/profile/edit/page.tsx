@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useProgress } from "@/context/progress-context";
 import { Avatar } from "@/components/Avatar";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { updateUserProfile, uploadAvatar, uploadCover } from "@/lib/profile-client";
@@ -25,6 +26,7 @@ export default function ProfileEditPage() {
   const router = useRouter();
   const { user, profile, loading, logout } = useAuth();
   const { showToast } = useToast();
+  const { withProgress } = useProgress();
   const [deleting, setDeleting] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
@@ -88,25 +90,27 @@ export default function ProfileEditPage() {
     setAvatarProgress(avatarFile ? 0 : null);
     setCoverProgress(coverFile ? 0 : null);
     try {
-      let photoURL: string | null | undefined;
-      let coverURL: string | null | undefined;
-      if (avatarFile) photoURL = await uploadAvatar(user.uid, avatarFile, setAvatarProgress);
-      if (coverFile) coverURL = await uploadCover(user.uid, coverFile, setCoverProgress);
+      await withProgress(async () => {
+        let photoURL: string | null | undefined;
+        let coverURL: string | null | undefined;
+        if (avatarFile) photoURL = await uploadAvatar(user.uid, avatarFile, setAvatarProgress);
+        if (coverFile) coverURL = await uploadCover(user.uid, coverFile, setCoverProgress);
 
-      await updateUserProfile(user.uid, {
-        displayName: displayName.trim(),
-        bio: bio.trim(),
-        links: {
-          website: website.trim(),
-          instagram: instagram.trim(),
-        },
-        subscriptionPrice: trimmedPrice ? Number(trimmedPrice) : null,
-        ...(photoURL !== undefined ? { photoURL } : {}),
-        ...(coverURL !== undefined ? { coverURL } : {}),
+        await updateUserProfile(user.uid, {
+          displayName: displayName.trim(),
+          bio: bio.trim(),
+          links: {
+            website: website.trim(),
+            instagram: instagram.trim(),
+          },
+          subscriptionPrice: trimmedPrice ? Number(trimmedPrice) : null,
+          ...(photoURL !== undefined ? { photoURL } : {}),
+          ...(coverURL !== undefined ? { coverURL } : {}),
+        });
+        showToast("저장되었습니다.");
+        setAvatarFile(null);
+        setCoverFile(null);
       });
-      showToast("저장되었습니다.");
-      setAvatarFile(null);
-      setCoverFile(null);
     } catch (err) {
       console.error("[profile/edit] save failed", err);
       showToast("저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");

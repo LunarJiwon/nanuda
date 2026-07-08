@@ -13,6 +13,7 @@ import {
   updateComment,
 } from "@/lib/comments-client";
 import { getCachedAuthorProfile } from "@/lib/profile-cache-client";
+import { notifyUser } from "@/lib/notify-client";
 import type { Comment } from "@/lib/types";
 
 interface CommentNode extends Comment {
@@ -256,7 +257,15 @@ function CommentRow({
   );
 }
 
-export function CommentSection({ postId }: { postId: string }) {
+export function CommentSection({
+  postId,
+  postAuthorId,
+}: {
+  postId: string;
+  /** Who gets notified on a new top-level comment (replies instead notify the comment being
+   * replied to — see postComment below). */
+  postAuthorId: string;
+}) {
   const { user, profile } = useAuth();
   const { showToast } = useToast();
   const [comments, setComments] = useState<Comment[] | null>(null);
@@ -275,7 +284,7 @@ export function CommentSection({ postId }: { postId: string }) {
 
   const tree = useMemo(() => groupComments(comments ?? []), [comments]);
 
-  async function postComment(content: string, parentId: string | null) {
+  async function postComment(content: string, parentId: string | null, parentAuthorId?: string) {
     if (!user) return;
     if (!canCreateComment) {
       showToast("댓글을 작성하려면 이메일 인증이 필요합니다. 상단 배너에서 인증 메일을 재전송해주세요.", "error");
@@ -295,6 +304,27 @@ export function CommentSection({ postId }: { postId: string }) {
       });
       setReplyingTo(null);
       showToast(parentId ? "답글이 등록되었습니다." : "댓글이 등록되었습니다.");
+      // Best-effort, fire-and-forget — never blocks or fails the comment UX itself.
+      const actorName = user.displayName || user.email || "익명";
+      if (parentId && parentAuthorId) {
+        notifyUser({
+          recipientId: parentAuthorId,
+          actorId: user.uid,
+          type: "reply",
+          title: `${actorName}님이 답글을 남겼습니다`,
+          body: content.slice(0, 80),
+          link: `/post/${postId}`,
+        });
+      } else {
+        notifyUser({
+          recipientId: postAuthorId,
+          actorId: user.uid,
+          type: "comment",
+          title: `${actorName}님이 댓글을 남겼습니다`,
+          body: content.slice(0, 80),
+          link: `/post/${postId}`,
+        });
+      }
     } catch (err) {
       console.error("[comments] post failed", err);
       showToast("댓글 작성에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
@@ -361,7 +391,7 @@ export function CommentSection({ postId }: { postId: string }) {
                 {canCreateComment ? (
                   <CommentForm
                     placeholder={`${root.authorName}님에게 답글 남기기`}
-                    onSubmit={(content) => postComment(content, root.id)}
+                    onSubmit={(content) => postComment(content, root.id, root.authorId)}
                     onCancel={() => setReplyingTo(null)}
                     autoFocus
                   />
@@ -387,7 +417,7 @@ export function CommentSection({ postId }: { postId: string }) {
                     {canCreateComment ? (
                       <CommentForm
                         placeholder={`${reply.authorName}님에게 답글 남기기`}
-                        onSubmit={(content) => postComment(content, reply.id)}
+                        onSubmit={(content) => postComment(content, reply.id, reply.authorId)}
                         onCancel={() => setReplyingTo(null)}
                         autoFocus
                       />

@@ -159,6 +159,13 @@ export function Header() {
             >
               프로필 편집
             </Link>
+            <Link
+              href="/settings"
+              onClick={closeProfile}
+              className="block w-full text-left text-[13.5px] text-[#0e0e0e] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f4f2ee]"
+            >
+              설정
+            </Link>
             {/* Accounts created before handles existed (or a Google sign-up that hasn't
                 finished /onboarding) have no public profile yet — route there instead of a
                 broken /profile/undefined link. */}

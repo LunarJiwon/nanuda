@@ -186,6 +186,16 @@ service cloud.firestore {
       allow get, list: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      // Comment/reply/like notifications are written directly by the acting user (not `uid`) —
+      // unlike the support/subscription types above, which only ever come from a Cloud Function
+      // with Admin SDK access. Kept narrow: no self-notification, always unread, fixed shape, and
+      // restricted to these three low-stakes types (see notify-client.ts) — support/subscription
+      // events must still only ever originate server-side.
+      allow create: if isVerifiedUser()
+        && request.auth.uid != uid
+        && request.resource.data.read == false
+        && request.resource.data.type in ['comment', 'reply', 'like']
+        && request.resource.data.keys().hasOnly(['type', 'title', 'body', 'link', 'read', 'createdAt']);
     }
 
     // Post views: `postViews/{postId}_{uid}` is a create-only dedup marker (no update/delete) —
