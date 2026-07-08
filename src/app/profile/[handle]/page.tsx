@@ -37,7 +37,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         className="h-[160px] sm:h-[220px] w-full bg-[#efeee9] bg-cover bg-center"
         style={user.coverURL ? { backgroundImage: `url(${user.coverURL})` } : undefined}
       />
-      <section className="px-6 max-w-[900px] mx-auto">
+      <section className="px-6 max-w-[1120px] mx-auto">
         <ProfileHeader
           uid={user.uid}
           handle={handle}
