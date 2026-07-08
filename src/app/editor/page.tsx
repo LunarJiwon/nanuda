@@ -20,7 +20,16 @@ import { CATEGORIES, CATEGORY_LABEL, type Category } from "@/lib/types";
 import { chipClass } from "@/lib/chipStyle";
 import { deriveExcerpt } from "@/lib/excerpt";
 import { computeReadTime } from "@/lib/readTime";
-import { createPost, deleteAllPostImages, deletePostImage, uploadPostImage } from "@/lib/posts-client";
+import {
+  createPost,
+  deleteAllPostImages,
+  deletePostImage,
+  updateDraft,
+  updateDraftAsPublished,
+  uploadPostImage,
+  type CreatePostInput,
+} from "@/lib/posts-client";
+import { Spinner } from "@/components/Spinner";
 
 // Implementation note (documented in SETUP.md): the design's text-like blocks are
 // contentEditable divs formatted via document.execCommand. We use plain <input>/<textarea>
@@ -50,6 +59,10 @@ export default function EditorPage() {
   const [dragOver, setDragOver] = useState<{ id: number; position: "before" | "after" } | null>(null);
   const [uploadingIds, setUploadingIds] = useState<Set<number>>(new Set());
   const [publishing, setPublishing] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  // Set once a 임시저장 save creates the draft's Firestore doc, so a later save (or publish)
+  // updates that same doc instead of piling up a new one every click.
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const nextIdRef = useRef(2);
   const fieldRefs = useRef<Map<string, HTMLTextAreaElement | HTMLInputElement>>(new Map());
@@ -372,6 +385,37 @@ export default function EditorPage() {
     }
   }
 
+  /** Shared by handlePublish/handleSaveDraft. `daily`/`art` posts show coverImageURL as its own
+   * figure above the body (see post/[id]/page.tsx) — leaving that same block's image markdown in
+   * the body too would render the picture twice, so it's excluded from the body there. Other
+   * categories never render coverImageURL separately, so their cover block stays inline as-is. */
+  function buildPostPayload(status: "published" | "draft", authorId: string, authorName: string): CreatePostInput {
+    const coverBlock =
+      blocks.find((b) => b.type === "image" && b.imageUrl) ??
+      blocks.find((b) => b.type === "circuit" && b.imageUrl) ??
+      null;
+    const coverImageURL = coverBlock?.imageUrl ?? null;
+    const showsCoverSeparately = category === "daily" || category === "art";
+    const bodyBlocks = showsCoverSeparately && coverBlock ? blocks.filter((b) => b.id !== coverBlock.id) : blocks;
+    const content = blocksToMarkdown(bodyBlocks);
+    const excerpt = deriveExcerpt(content || subtitle || title);
+    const readTime = computeReadTime(content);
+    return {
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      content,
+      excerpt,
+      category,
+      tags,
+      authorId,
+      authorName,
+      coverImageURL,
+      readTime,
+      status,
+      ...(category === "art" ? { ratio: "1/1" } : {}),
+    };
+  }
+
   async function handlePublish() {
     if (!user || user.isAnonymous) {
       router.push("/login");
@@ -390,28 +434,17 @@ export default function EditorPage() {
     }
     setPublishing(true);
     try {
-      const content = blocksToMarkdown(blocks);
-      const excerpt = deriveExcerpt(content || subtitle || title);
-      const readTime = computeReadTime(content);
-      const coverImageURL =
-        blocks.find((b) => b.type === "image" && b.imageUrl)?.imageUrl ??
-        blocks.find((b) => b.type === "circuit" && b.imageUrl)?.imageUrl ??
-        null;
-
-      const id = await createPost({
-        title: title.trim(),
-        subtitle: subtitle.trim(),
-        content,
-        excerpt,
-        category,
-        tags,
-        authorId: user.uid,
-        authorName: user.displayName || user.email || "익명",
-        coverImageURL,
-        readTime,
-        ...(category === "art" ? { ratio: "1/1" } : {}),
-      });
+      const payload = buildPostPayload("published", user.uid, user.displayName || user.email || "익명");
+      const id = draftId ?? (await createPost(payload));
+      if (draftId) await updateDraftAsPublished(draftId, payload);
       publishedRef.current = true;
+      // Best-effort — a missed revalidation just means the list page is stale for up to the
+      // normal 60s window instead of instant, not a broken publish.
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paths: ["/", `/${category}`, "/archive"] }),
+      }).catch(() => {});
       showToast("발행되었습니다.");
       router.push(`/post/${id}`);
     } catch (err) {
@@ -419,6 +452,40 @@ export default function EditorPage() {
       showToast("발행에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!user || user.isAnonymous) {
+      router.push("/login");
+      return;
+    }
+    if (!canPublish) {
+      showToast("임시저장하려면 이메일 인증이 필요합니다. 상단 배너에서 인증 메일을 재전송해주세요.", "error");
+      return;
+    }
+    if (!title.trim()) {
+      showToast("제목을 입력해주세요.", "error");
+      return;
+    }
+    setSavingDraft(true);
+    try {
+      const payload = buildPostPayload("draft", user.uid, user.displayName || user.email || "익명");
+      if (draftId) {
+        await updateDraft(draftId, payload);
+      } else {
+        setDraftId(await createPost(payload));
+      }
+      // The draft doc now references whatever images are currently in the blocks, so the
+      // abandon-cleanup effect shouldn't sweep them even if the editor is closed without
+      // publishing afterward.
+      publishedRef.current = true;
+      showToast("임시저장되었습니다.");
+    } catch (err) {
+      console.error("[editor] save draft failed", err);
+      showToast("임시저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
+    } finally {
+      setSavingDraft(false);
     }
   }
 
@@ -502,14 +569,30 @@ export default function EditorPage() {
           </div>
           <button
             type="button"
+            onClick={handleSaveDraft}
+            disabled={savingDraft || publishing}
+            className="flex items-center gap-[6px] border border-[#e0ded8] bg-white text-[#54524c] text-[12.5px] font-semibold px-[15px] py-[6px] rounded-[2px] disabled:opacity-60 cursor-pointer"
+          >
+            {savingDraft && <Spinner />}
+            {savingDraft ? "저장 중…" : "임시저장"}
+          </button>
+          <button
+            type="button"
             onClick={handlePublish}
-            disabled={publishing}
+            disabled={publishing || savingDraft}
             className="border border-[#0e0e0e] bg-[#0e0e0e] text-white text-[12.5px] font-semibold px-[15px] py-[6px] rounded-[2px] disabled:opacity-60 cursor-pointer"
           >
             {publishing ? "발행 중…" : "발행"}
           </button>
         </div>
       </div>
+
+      {publishing && (
+        <div className="fixed inset-0 z-[100] bg-white/70 flex flex-col items-center justify-center gap-[14px]">
+          <Spinner className="w-[28px] h-[28px] border-[3px] border-[#e0ded8] border-t-[#0e0e0e]" />
+          <span className="text-[13px] text-[#54524c] font-medium">발행 중…</span>
+        </div>
+      )}
 
       <section className="px-5 pt-8 pb-24 max-w-[760px] mx-auto">
         <input

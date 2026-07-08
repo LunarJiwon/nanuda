@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import type { Element } from "hast";
 import ReactMarkdown, { type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
@@ -28,7 +29,7 @@ export function PostBody({ content }: { content: string }) {
   return (
     <div className="nanuda-prose">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeHighlight]}
         components={{
           code({ node, className, ...rest }: ComponentPropsWithoutRef<"code"> & ExtraProps) {

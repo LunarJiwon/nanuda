@@ -2,7 +2,7 @@ import { BLOCK_MENU_ITEMS, type BlockType } from "@/lib/blocks";
 
 export function BlockMenu({ onSelect }: { onSelect: (type: BlockType) => void }) {
   return (
-    <div className="animate-menuin border border-[#e6e4de] rounded-[7px] bg-white shadow-[0_14px_34px_-14px_rgba(0,0,0,0.25)] p-[6px] max-w-[320px]">
+    <div className="animate-menuin w-[248px] border border-[#e6e4de] rounded-[7px] bg-white shadow-[0_14px_34px_-14px_rgba(0,0,0,0.25)] p-[6px]">
       <div className="text-[10px] tracking-[0.08em] uppercase text-[#b8b6ad] px-[8px] pt-[4px] pb-[6px]">
         블록 삽입
       </div>

@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { href: "/info", label: "정보" },
   { href: "/art", label: "예술" },
   { href: "/quote", label: "글귀" },
-  { href: "/archive", label: "아카이브" },
+  { href: "/archive", label: "전체" },
   { href: "/about", label: "소개" },
 ];
 
@@ -70,9 +70,7 @@ export function Header() {
       <header className="hidden lg:flex relative flex-none items-center justify-between h-[62px] px-[28px] border-b border-[#e8e7e3] bg-white/90 backdrop-blur-[8px] z-20">
         <Link href="/" className="flex items-center gap-[10px]">
           <LogoMark className="w-[26px] h-[26px]" />
-          <span className="font-bold text-[16px] tracking-[-0.02em]">
-            나누다 <span className="text-[#9a988f] font-normal text-[13px]">nanuda</span>
-          </span>
+          <span className="font-bold text-[16px] tracking-[-0.02em]">나누다</span>
         </Link>
         <nav className="flex items-center gap-[1px]">
           {NAV_ITEMS.map((item) => {

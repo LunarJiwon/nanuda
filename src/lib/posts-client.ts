@@ -3,7 +3,7 @@
 // Client-side Firestore/Storage writes for the editor. These run in the browser as the
 // authenticated user, so security rules (firestore.rules / storage.rules) — not this module —
 // are what actually enforce "only the author can write their own posts".
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase/client";
 import type { Category } from "@/lib/types";
@@ -20,12 +20,14 @@ export interface CreatePostInput {
   coverImageURL: string | null;
   readTime: string;
   ratio?: string;
+  /** "draft" for the editor's 임시저장 button — firestore.rules allows the author to create either,
+   * but only "published" ones are ever publicly readable/listed (see posts.ts). */
+  status: "published" | "draft";
 }
 
 export async function createPost(input: CreatePostInput): Promise<string> {
   const docRef = await addDoc(collection(db, "posts"), {
     ...input,
-    status: "published",
     publishedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     commentCount: 0,
@@ -33,6 +35,22 @@ export async function createPost(input: CreatePostInput): Promise<string> {
     viewCount: 0,
   });
   return docRef.id;
+}
+
+/** Overwrites an existing 임시저장 draft's fields in place (see the editor's draftId state) so
+ * repeated saves update the same doc instead of creating a new one every time. */
+export async function updateDraft(postId: string, input: CreatePostInput): Promise<void> {
+  await updateDoc(doc(db, "posts", postId), { ...input, updatedAt: serverTimestamp() });
+}
+
+/** Promotes an existing draft doc to published — also bumps publishedAt to now, so it sorts by
+ * actual publish time rather than whenever the draft was first saved. */
+export async function updateDraftAsPublished(postId: string, input: CreatePostInput): Promise<void> {
+  await updateDoc(doc(db, "posts", postId), {
+    ...input,
+    publishedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /**

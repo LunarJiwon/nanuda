@@ -3,15 +3,10 @@
 import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
 import { AutoTextarea } from "@/components/AutoTextarea";
 import { BlockMenu } from "@/components/BlockMenu";
+import { Spinner } from "@/components/Spinner";
 import { CODE_LANGUAGES, type BlockType, type EditorBlock } from "@/lib/blocks";
 
 type FieldRefSetter = (node: HTMLTextAreaElement | HTMLInputElement | null) => void;
-
-function UploadSpinner() {
-  return (
-    <span className="w-[13px] h-[13px] flex-none rounded-full border-2 border-[#d5d3ce] border-t-[#0e0e0e] animate-spin" />
-  );
-}
 
 export function BlockRow({
   block,
@@ -219,7 +214,7 @@ export function BlockRow({
               />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center gap-[8px] bg-white/50 rounded-[3px] text-[11.5px] text-[#0e0e0e]">
-                  <UploadSpinner />
+                  <Spinner />
                   교체하는 중…
                 </div>
               )}
@@ -256,7 +251,7 @@ export function BlockRow({
           >
             {uploading ? (
               <>
-                <UploadSpinner />
+                <Spinner />
                 업로드 중…
               </>
             ) : (
@@ -283,7 +278,7 @@ export function BlockRow({
           >
             {uploading ? (
               <>
-                <UploadSpinner />
+                <Spinner />
                 업로드 중…
               </>
             ) : (

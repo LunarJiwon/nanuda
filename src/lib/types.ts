@@ -30,7 +30,7 @@ export interface Post {
   authorId: string;
   authorName: string;
   coverImageURL: string | null;
-  status: "published";
+  status: "published" | "draft";
   /** ISO 8601 */
   publishedAt: string;
   /** ISO 8601 */

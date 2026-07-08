@@ -30,11 +30,18 @@ service cloud.firestore {
     // (including anonymous, for view counts) may bump *only* those fields — the standard
     // Firestore pattern for counters touched by non-owners.
     match /posts/{postId} {
-      allow get, list: if resource.data.status == 'published';
+      // Single-doc get additionally allows the author to fetch their own draft directly by id
+      // (status != 'published'); list queries stay published-only since Firestore can only
+      // validate a list rule against filters the query itself already applies, and no query in
+      // this app filters "my own drafts" yet (draft is create/save-only for now — no
+      // browse-your-drafts UI).
+      allow get: if resource.data.status == 'published'
+        || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      allow list: if resource.data.status == 'published';
 
       allow create: if isVerifiedUser()
         && request.resource.data.authorId == request.auth.uid
-        && request.resource.data.status == 'published';
+        && (request.resource.data.status == 'published' || request.resource.data.status == 'draft');
 
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid

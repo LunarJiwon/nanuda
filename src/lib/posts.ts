@@ -33,7 +33,7 @@ function docToPost(snap: DocumentSnapshot): Post {
     authorId: data.authorId ?? "",
     authorName: data.authorName ?? "",
     coverImageURL: data.coverImageURL ?? null,
-    status: "published",
+    status: data.status === "draft" ? "draft" : "published",
     publishedAt: data.publishedAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),
     updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString(),
     readTime: data.readTime ?? "",

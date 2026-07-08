@@ -11,6 +11,7 @@
  * site-origin / region assumptions baked into this file.
  */
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -230,4 +231,67 @@ export const verifyEmailToken = onRequest(async (req, res) => {
     console.error("[verifyEmailToken] failed", err);
     redirect("error", "unknown");
   }
+});
+
+/**
+ * Every visitor gets a stable anonymous Firebase Auth user for view-count dedup (see
+ * auth-context.tsx / views-client.ts) — it grants no privileges (comments/likes/posts all require
+ * a real, verified account, per firestore.rules' isVerifiedUser()), so an anonymous uid's only
+ * possible Firestore footprint is its own `postViews/{postId}_{uid}` docs. Neither the Auth user
+ * nor those docs ever expire on their own, so this runs weekly to delete anonymous accounts that
+ * have gone quiet for ANONYMOUS_MAX_AGE_MS, plus their postViews docs, so both collections don't
+ * grow forever. Never touches non-anonymous users (has a provider or email/phone) regardless of
+ * activity. Deliberately does NOT decrement posts/{postId}.viewCount — the view already happened
+ * and stays counted; only the "who's already been counted" dedup marker is being cleared.
+ */
+const ANONYMOUS_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+export const cleanupStaleAnonymousUsers = onSchedule("every 168 hours", async () => {
+  const auth = getAuth();
+  const db = getFirestore();
+  const cutoff = Date.now() - ANONYMOUS_MAX_AGE_MS;
+
+  const staleUids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const page = await auth.listUsers(1000, pageToken);
+    for (const user of page.users) {
+      const isAnonymous = user.providerData.length === 0 && !user.email && !user.phoneNumber;
+      if (!isAnonymous) continue;
+      const lastActive = user.metadata.lastRefreshTime ?? user.metadata.lastSignInTime;
+      if (!lastActive || new Date(lastActive).getTime() < cutoff) {
+        staleUids.push(user.uid);
+      }
+    }
+    pageToken = page.pageToken;
+  } while (pageToken);
+
+  if (staleUids.length === 0) {
+    console.log("[cleanupStaleAnonymousUsers] no stale anonymous users found");
+    return;
+  }
+
+  // Delete the dedup docs before the Auth users: if this crashes partway through, leftover Auth
+  // users are harmless (just retried next week), but a postViews doc referencing an already-
+  // deleted uid could theoretically confuse a future by-uid lookup.
+  for (let i = 0; i < staleUids.length; i += 30) {
+    // Firestore `in` queries cap at 30 values per query.
+    const chunk = staleUids.slice(i, i + 30);
+    const snap = await db.collection("postViews").where("uid", "in", chunk).get();
+    if (snap.empty) continue;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  for (let i = 0; i < staleUids.length; i += 1000) {
+    // Admin SDK deleteUsers caps at 1000 uids per call.
+    const chunk = staleUids.slice(i, i + 1000);
+    const result = await auth.deleteUsers(chunk);
+    if (result.failureCount > 0) {
+      console.error("[cleanupStaleAnonymousUsers] some deletions failed", result.errors);
+    }
+  }
+
+  console.log(`[cleanupStaleAnonymousUsers] deleted ${staleUids.length} stale anonymous user(s)`);
 });
