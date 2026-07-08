@@ -292,3 +292,51 @@ If your `firebase-tools` version requires it, enable the frameworks experiment f
 ```bash
 firebase experiments:enable webframeworks
 ```
+
+## 8. Reader→writer 응원 (Toss Payments)
+
+Post detail pages show an "응원하기" button (src/components/SupportButton.tsx) that lets a
+verified, signed-in reader send the author a small fixed-amount tip (1,000/3,000/5,000/10,000원)
+via Toss Payments. MVP scope, deliberately kept small — see the priority-1 monetization plan
+discussed with the project owner:
+
+- **No automatic payout to authors yet.** All payments land in the single nanuda merchant account;
+  settlement to individual authors is a manual monthly step (query the `supports` collection for
+  `status == 'paid'`, grouped by `authorId`) until real volume justifies building automatic split
+  settlement (Toss's platform/partner settlement product, a separate merchant contract).
+- **Card only** (`method: "CARD"` in `startSupportPayment`, src/lib/support-client.ts) — Toss's
+  default flow for that method already includes simple-pay options (카카오페이, 네이버페이, etc.)
+  in the same hosted window, so this isn't as limited as it sounds.
+- **No self-tipping** — hidden client-side (SupportButton returns null on your own post) and
+  enforced in `firestore.rules` (`authorId != request.auth.uid`).
+
+**Required one-time setup** (can't be automated — needs your real Toss dashboard credentials):
+
+1. Get your client key and secret key from
+   [developers.tosspayments.com/my/api-keys](https://developers.tosspayments.com/my/api-keys) — use
+   the `test_` prefixed keys until your merchant contract is approved, matching test keys are
+   always available for exactly this purpose.
+2. Provision the secret key (interactive prompt, same pattern as `RESEND_API_KEY` in §1.3):
+   ```bash
+   firebase functions:secrets:set TOSS_SECRET_KEY
+   ```
+3. Put the **client key** (public, safe to commit) in `.env.local` as `NEXT_PUBLIC_TOSS_CLIENT_KEY`
+   for local dev, and in `apphosting.yaml`'s matching entry (currently `value: ""`) for the deployed
+   site, then redeploy hosting.
+4. Deploy the updated rules and functions:
+   ```bash
+   firebase deploy --only firestore:rules
+   firebase deploy --only functions
+   ```
+
+**How it works end-to-end:**
+
+1. `startSupportPayment` (support-client.ts) writes `supports/{orderId}` as `status: "pending"`,
+   then hands off to the Toss SDK, which redirects the browser to Toss's hosted payment window.
+2. Toss redirects back to `/support/success?paymentKey=...&orderId=...&amount=...` (or
+   `/support/fail` on cancel/failure — the abandoned `pending` doc is harmless, just never counted).
+3. The success page calls the `confirmTossPayment` Cloud Function, which is the only thing that
+   actually captures the charge (via Toss's `/v1/payments/confirm` API, using the Secret
+   Manager-backed secret key) — cross-checking the amount against what this app itself wrote in
+   step 1, not just what the client claims in the URL. Only then does it flip the doc to
+   `status: "paid"`.

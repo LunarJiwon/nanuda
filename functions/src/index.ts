@@ -57,6 +57,14 @@ const SITE_ORIGIN = defineString("SITE_ORIGIN", {
  */
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
+/**
+ * Toss Payments secret key, Secret Manager-backed (same pattern as RESEND_API_KEY above). Never
+ * sent to the client — only used server-side to call Toss's confirm API, since that call is what
+ * actually authorizes charging the card (the client-side SDK only *starts* a payment attempt).
+ * Provision with: firebase functions:secrets:set TOSS_SECRET_KEY
+ */
+const TOSS_SECRET_KEY = defineSecret("TOSS_SECRET_KEY");
+
 const RATE_LIMIT_MS = 60_000;
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -330,4 +338,70 @@ export const deleteAccount = onCall(async (request) => {
 
   await getAuth().deleteUser(uid);
   return { ok: true };
+});
+
+/**
+ * Callable — confirms a reader→writer 응원(tip) payment with Toss after the client-side SDK
+ * redirects back from Toss's hosted payment window. This confirm call is what actually captures
+ * the charge; until it succeeds, Toss has only reserved the payment, not completed it. Runs as a
+ * Cloud Function (not a Next.js route) specifically so the Toss secret key never has to exist
+ * anywhere near the client-facing app, matching this project's existing rule that Admin-privileged
+ * code lives in functions/ only.
+ *
+ * Trusts nothing from the client except which orderId to confirm — the *amount* actually charged
+ * is cross-checked against the `supports/{orderId}` doc this project itself wrote when the
+ * payment attempt started (see support-client.ts), not just whatever the client claims here.
+ */
+export const confirmTossPayment = onCall({ secrets: [TOSS_SECRET_KEY] }, async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  }
+
+  const { orderId, paymentKey, amount } = (request.data ?? {}) as {
+    orderId?: string;
+    paymentKey?: string;
+    amount?: number;
+  };
+  if (!orderId || !paymentKey || typeof amount !== "number") {
+    throw new HttpsError("invalid-argument", "잘못된 요청입니다.");
+  }
+
+  const db = getFirestore();
+  const docRef = db.collection("supports").doc(orderId);
+  const snap = await docRef.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "결제 정보를 찾을 수 없습니다.");
+  }
+  const data = snap.data() as { supporterId: string; amount: number; status: string; postId: string };
+  if (data.supporterId !== auth.uid) {
+    throw new HttpsError("permission-denied", "본인의 결제만 확인할 수 있습니다.");
+  }
+  if (data.status === "paid") {
+    // Already confirmed — e.g. the success page effect re-ran. Idempotent.
+    return { ok: true, postId: data.postId };
+  }
+  if (data.amount !== amount) {
+    await docRef.update({ status: "failed", failedReason: "amount-mismatch" });
+    throw new HttpsError("failed-precondition", "결제 금액이 일치하지 않습니다.");
+  }
+
+  const res = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${Buffer.from(`${TOSS_SECRET_KEY.value()}:`).toString("base64")}`,
+    },
+    body: JSON.stringify({ paymentKey, orderId, amount }),
+  });
+
+  if (!res.ok) {
+    const error = (await res.json().catch(() => ({}))) as { code?: string };
+    console.error("[confirmTossPayment] Toss confirm API rejected the payment", error);
+    await docRef.update({ status: "failed", failedReason: error.code ?? "unknown" });
+    throw new HttpsError("internal", "결제 승인에 실패했습니다.");
+  }
+
+  await docRef.update({ status: "paid", paymentKey, paidAt: Timestamp.now() });
+  return { ok: true, postId: data.postId };
 });

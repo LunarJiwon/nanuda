@@ -100,6 +100,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Reader→writer 응원(tip) records, one doc per payment attempt (doc id is the Toss orderId).
+    // Only ever created here as 'pending' by the supporter; the confirmTossPayment Cloud Function
+    // (Admin SDK, bypasses these rules) is the only thing that ever flips status to
+    // 'paid'/'failed' once it's actually verified the payment with Toss — a client can never mark
+    // its own payment as paid. No self-tipping. Fixed amount presets only, for now.
+    match /supports/{orderId} {
+      allow get: if isSignedIn()
+        && (resource.data.supporterId == request.auth.uid || resource.data.authorId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && request.resource.data.supporterId == request.auth.uid
+        && request.resource.data.authorId != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount in [1000, 3000, 5000, 10000];
+    }
+
     // Post views: `postViews/{postId}_{uid}` is a create-only dedup marker (no update/delete) —
     // unlike likes/comments, anonymous visitors are allowed here so guest traffic is still
     // counted. The doc id must match the uid making the request, so nobody can inflate another

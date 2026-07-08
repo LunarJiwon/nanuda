@@ -10,6 +10,7 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@tosspayments/tosspayments-sdk": "^2.7.1",
     "firebase": "^12.15.0",
     "firebase-admin": "^14.1.0",
     "katex": "^0.17.0",

@@ -8,6 +8,7 @@ import { CoverImage } from "@/components/CoverImage";
 import { PostBody } from "@/components/PostBody";
 import { TagChip } from "@/components/TagChip";
 import { LikeButton } from "@/components/LikeButton";
+import { SupportButton } from "@/components/SupportButton";
 import { ViewTracker } from "@/components/ViewTracker";
 import { CommentSection } from "@/components/comments/CommentSection";
 
@@ -73,6 +74,12 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.excerpt}</p>
           <div className="flex items-center gap-[10px] mb-6">
             <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+            <SupportButton
+              postId={post.id}
+              postTitle={post.title}
+              authorId={post.authorId}
+              authorName={post.authorName}
+            />
             <span className="text-[12px] text-[#8a887f]">
               조회 <span className="font-mono">{post.viewCount}</span>
             </span>
@@ -89,6 +96,12 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <p className="text-[14px] text-[#8a887f] m-0">— {post.excerpt}</p>
           <div className="flex items-center justify-center gap-[10px] mt-[18px]">
             <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+            <SupportButton
+              postId={post.id}
+              postTitle={post.title}
+              authorId={post.authorId}
+              authorName={post.authorName}
+            />
             <span className="text-[12px] text-[#8a887f]">
               조회 <span className="font-mono">{post.viewCount}</span>
             </span>
@@ -120,6 +133,12 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               <TagChip key={tag} tag={tag} size="sm" />
             ))}
             <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+            <SupportButton
+              postId={post.id}
+              postTitle={post.title}
+              authorId={post.authorId}
+              authorName={post.authorName}
+            />
           </div>
 
           {isDaily && post.coverImageURL && (

@@ -42,3 +42,13 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # Toss Payments client key — public, same reasoning as the Firebase config above (see
+  # .env.example). Empty until a real key (test or live) is issued from
+  # https://developers.tosspayments.com/my/api-keys — fill this in and redeploy once you have one;
+  # until then, the 응원하기(support) button shows a clear "not configured" error instead of
+  # silently failing.
+  - variable: NEXT_PUBLIC_TOSS_CLIENT_KEY
+    value: ""
+    availability:
+      - BUILD
+      - RUNTIME
