@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useAuth, isRealUser, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-context";
 import { Avatar } from "@/components/Avatar";
 import { formatDate } from "@/lib/date";
 import {
@@ -268,6 +269,7 @@ export function CommentSection({
 }) {
   const { user, profile } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
@@ -346,7 +348,10 @@ export function CommentSection({
   async function handleDelete(commentId: string) {
     // Sensitive/irreversible action — confirm before deleting, same convention as post/account
     // deletion elsewhere in the app.
-    const confirmed = window.confirm("댓글을 삭제하시겠습니까? 답글이 있다면 함께 삭제됩니다.");
+    const confirmed = await confirm("댓글을 삭제하시겠습니까? 답글이 있다면 함께 삭제됩니다.", {
+      confirmLabel: "삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     try {
       await deleteCommentCascade(postId, commentId);

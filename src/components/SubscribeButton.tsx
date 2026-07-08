@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-context";
 import {
   cancelSubscriptionCall,
   getMySubscription,
@@ -27,6 +28,7 @@ export function SubscribeButton({
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   // Whether currentPeriodEnd is still in the future — computed once per fetch (inside the effect's
   // async callback, where reading the clock is fine) rather than at render time, since render
@@ -61,7 +63,7 @@ export function SubscribeButton({
         onClick={() => showToast("구독 관리하기는 준비 중입니다. 조금만 기다려주세요.")}
         className="text-[12.5px] font-medium text-[#b0aea6] border border-[#e0ded8] bg-white px-[13px] py-[7px] rounded-[2px] cursor-pointer"
       >
-        구독료 월 {price.toLocaleString()}원 · 구독 관리하기
+        구독 관리하기
       </button>
     );
   }
@@ -106,8 +108,9 @@ export function SubscribeButton({
 
   async function handleCancel() {
     if (!user || loading) return;
-    const confirmed = window.confirm(
-      "구독을 취소하시겠습니까? 이미 결제한 기간이 끝날 때까지는 계속 이용할 수 있습니다."
+    const confirmed = await confirm(
+      "구독을 취소하시겠습니까? 이미 결제한 기간이 끝날 때까지는 계속 이용할 수 있습니다.",
+      { confirmLabel: "구독 취소", danger: true }
     );
     if (!confirmed) return;
     setLoading(true);

@@ -14,6 +14,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-context";
 import { useProgress } from "@/context/progress-context";
 import { BlockMenu } from "@/components/BlockMenu";
 import { BlockRow } from "./BlockRow";
@@ -83,6 +84,7 @@ function EditorPageContent() {
   const editId = searchParams.get("edit");
   const { user, profile, loading } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { withProgress } = useProgress();
 
   const [category, setCategory] = useState<Category>("daily");
@@ -153,8 +155,10 @@ function EditorPageContent() {
 
   // Covers in-app navigation (clicking any next/link <Link> elsewhere on the site) — App Router
   // has no built-in "confirm before route change" hook, so this intercepts the click in the
-  // capture phase, before Next's own click handler on the same <a> runs in the bubble phase.
-  // Confirming lets the event continue normally (Next still navigates); cancelling stops it here.
+  // capture phase, before Next's own click handler on the same <a> runs in the bubble phase. The
+  // app's own confirm dialog is async (unlike window.confirm, which blocks the thread), so the
+  // click is always suppressed here first; confirming then navigates programmatically instead of
+  // letting the original click go through.
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (!isDirtyRef.current) return;
@@ -163,17 +167,20 @@ function EditorPageContent() {
       const href = anchor.getAttribute("href");
       if (!href || !href.startsWith("/")) return; // external/mailto/etc. — beforeunload covers those
       if (new URL(href, window.location.origin).pathname === window.location.pathname) return;
-      const confirmed = window.confirm(
-        "작성 중인 내용이 저장되지 않았습니다. 이 페이지를 벗어나시겠습니까?"
-      );
-      if (!confirmed) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      confirm("작성 중인 내용이 저장되지 않았습니다. 이 페이지를 벗어나시겠습니까?", {
+        confirmLabel: "나가기",
+        danger: true,
+      }).then((confirmed) => {
+        if (!confirmed) return;
+        isDirtyRef.current = false;
+        router.push(href);
+      });
     }
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, []);
+  }, [confirm, router]);
 
   // If the editor unmounts (navigating away, closing the tab isn't caught by this — see
   // deleteAllPostImages' doc comment) without ever publishing, every image already uploaded to

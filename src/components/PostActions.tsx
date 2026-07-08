@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-context";
 import { deletePost } from "@/lib/posts-client";
 import type { Category } from "@/lib/types";
 
@@ -23,13 +24,17 @@ export function PostActions({
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [deleting, setDeleting] = useState(false);
 
   if (user?.uid !== authorId) return null;
 
   async function handleDelete() {
     // Irreversible — confirm before deleting, same convention as comment/account deletion.
-    const confirmed = window.confirm("게시글을 삭제하시겠습니까? 되돌릴 수 없습니다.");
+    const confirmed = await confirm("게시글을 삭제하시겠습니까? 되돌릴 수 없습니다.", {
+      confirmLabel: "삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     setDeleting(true);
     try {

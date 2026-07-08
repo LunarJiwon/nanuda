@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/context/toast-context";
+import { ConfirmProvider } from "@/context/confirm-context";
 import { ProgressProvider } from "@/context/progress-context";
 import { Header } from "@/components/Header";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
@@ -56,20 +57,22 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
         <ToastProvider>
-          <AuthProvider>
-            <ProgressProvider>
-              <Header />
-              <TopProgressBar />
-              <EmailVerificationBanner />
-              {/* scrollbar-gutter reserves the scrollbar's width even on short pages, so navigating
-                  between a scrolling page and a non-scrolling one doesn't shift centered content
-                  horizontally when the scrollbar appears/disappears. */}
-              <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-white [scrollbar-gutter:stable]">
-                <PageTransition>{children}</PageTransition>
-              </main>
-              <MobileTabs />
-            </ProgressProvider>
-          </AuthProvider>
+          <ConfirmProvider>
+            <AuthProvider>
+              <ProgressProvider>
+                <Header />
+                <TopProgressBar />
+                <EmailVerificationBanner />
+                {/* scrollbar-gutter reserves the scrollbar's width even on short pages, so navigating
+                    between a scrolling page and a non-scrolling one doesn't shift centered content
+                    horizontally when the scrollbar appears/disappears. */}
+                <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-white [scrollbar-gutter:stable]">
+                  <PageTransition>{children}</PageTransition>
+                </main>
+                <MobileTabs />
+              </ProgressProvider>
+            </AuthProvider>
+          </ConfirmProvider>
         </ToastProvider>
       </body>
     </html>

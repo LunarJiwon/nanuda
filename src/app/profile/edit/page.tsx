@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-context";
 import { useProgress } from "@/context/progress-context";
 import { Avatar } from "@/components/Avatar";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
@@ -27,6 +28,7 @@ export default function ProfileEditPage() {
   const router = useRouter();
   const { user, profile, loading, logout } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { withProgress } = useProgress();
   const [deleting, setDeleting] = useState(false);
 
@@ -131,8 +133,9 @@ export default function ProfileEditPage() {
 
   async function handleDeleteAccount() {
     if (deleting) return;
-    const confirmed = window.confirm(
-      "정말 탈퇴하시겠습니까? 프로필과 @핸들이 삭제되며 되돌릴 수 없습니다. 이미 작성한 글·댓글은 남아있습니다."
+    const confirmed = await confirm(
+      "정말 탈퇴하시겠습니까? 프로필과 @핸들이 삭제되며 되돌릴 수 없습니다. 이미 작성한 글·댓글은 남아있습니다.",
+      { confirmLabel: "탈퇴", danger: true }
     );
     if (!confirmed) return;
     setDeleting(true);
