@@ -94,7 +94,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               {post.authorName}
             </span>
           )}
-          <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.excerpt}</p>
+          {/* The subtitle is the actual one-line description the author typed — the excerpt is
+              just an auto-derived slice of the body, which now renders in full right below this,
+              so showing it here too just repeats the same text twice. */}
+          {post.subtitle && <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.subtitle}</p>}
           <div className="flex items-center gap-[10px] mb-6">
             <span className="text-[12px] text-[#8a887f]">
               조회 <span className="font-mono">{post.viewCount}</span>
