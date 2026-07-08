@@ -96,10 +96,8 @@ export function Header() {
             글쓰기
           </Link>
           {loading && (
-            // -mt-px matches the logged-in avatar button below so swapping from this skeleton to
-            // the real avatar once auth resolves doesn't visibly shift by that 1px correction.
             <span
-              className="ml-[12px] -mt-px w-[32px] h-[32px] rounded-full bg-[#efeee9] animate-pulse"
+              className="ml-[12px] w-[32px] h-[32px] rounded-full bg-[#efeee9] animate-pulse"
               aria-hidden
             />
           )}
@@ -111,16 +109,16 @@ export function Header() {
               로그인
             </Link>
           )}
-          {loggedIn && <NotificationBell />}
+          {loggedIn && (
+            <span className="ml-[10px]">
+              <NotificationBell />
+            </span>
+          )}
           {loggedIn && (
             <button
               ref={profileButtonRef}
               onClick={() => setProfileOpen((v) => !v)}
-              // Mathematically centered against the 글쓰기 button already (same flex row,
-              // items-center), but a circle sitting next to a hard-edged rectangle reads as
-              // sitting slightly low even when its bounding box is perfectly centered — a common
-              // optical-alignment correction, not a layout bug.
-              className="ml-[4px] -mt-px rounded-full cursor-pointer"
+              className="ml-[10px] rounded-full cursor-pointer"
               aria-label="프로필 메뉴"
             >
               <Avatar src={profile?.photoURL} name={avatarName} size={32} />
@@ -211,9 +209,13 @@ export function Header() {
               </svg>
             </Link>
           )}
-          {loggedIn && <NotificationBell />}
           {loggedIn && (
-            <span className="ml-[2px]" aria-label="로그인됨">
+            <span className="ml-[4px]">
+              <NotificationBell />
+            </span>
+          )}
+          {loggedIn && (
+            <span className="ml-[6px]" aria-label="로그인됨">
               <Avatar src={profile?.photoURL} name={avatarName} size={27} />
             </span>
           )}

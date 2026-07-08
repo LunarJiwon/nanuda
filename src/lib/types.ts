@@ -105,6 +105,14 @@ export interface Subscription {
   updatedAt: string;
 }
 
+/** `follows/{followerId}_{followeeId}` — a free, no-payment "새 글 알림 받기" relationship,
+ * distinct from the paid Subscription above (which additionally unlocks 구독자 전용 content). */
+export interface Follow {
+  followerId: string;
+  followeeId: string;
+  createdAt: string;
+}
+
 export type NotificationType = "support" | "subscription_started" | "subscription_canceled" | "new_subscriber_post";
 
 /** `notifications/{uid}/items/{id}` — always written by a Cloud Function (a client can only read

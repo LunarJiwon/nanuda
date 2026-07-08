@@ -141,6 +141,18 @@ service cloud.firestore {
         && request.resource.data.amount in [1000, 3000, 5000, 10000];
     }
 
+    // Free follow relationships (`follows/{followerId}_{followeeId}`) — who shows up in the
+    // 팔로잉/팔로워 lists on a profile page. Public read, same principle as likes/comments: the
+    // social graph itself isn't sensitive data. Only the follower may create/delete their own
+    // follow doc; no self-follow.
+    match /follows/{followId} {
+      allow get, list: if true;
+      allow create: if isVerifiedUser()
+        && request.resource.data.followerId == request.auth.uid
+        && request.resource.data.followeeId != request.auth.uid;
+      allow delete: if isRealUser() && resource.data.followerId == request.auth.uid;
+    }
+
     // Reader→author paid subscriptions (`subscriptions/{authorId}_{subscriberId}`). Only ever
     // written by confirmSubscription/cancelSubscription/chargeActiveSubscriptions (Admin SDK,
     // bypasses these rules) — a client can read its own (either side of the subscription) but can

@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getUserByHandle } from "@/lib/users";
 import { getPostsByAuthor } from "@/lib/posts";
+import { getFollowCounts } from "@/lib/follows";
 import { CoverImage } from "@/components/CoverImage";
 import { Avatar } from "@/components/Avatar";
 import { ProfileEditButton } from "@/components/ProfileEditButton";
+import { FollowButton } from "@/components/FollowButton";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { ProfileWelcomeTutorial } from "@/components/ProfileWelcomeTutorial";
 import { formatDate } from "@/lib/date";
@@ -30,6 +32,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   if (!user) notFound();
 
   const posts = await getPostsByAuthor(user.uid);
+  const followCounts = await getFollowCounts(user.uid);
   const links = user.links ?? {};
   const hasLinks = Boolean(links.website || links.instagram || links.twitter);
 
@@ -47,11 +50,20 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             size={84}
             className="border-[3px] border-white shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
           />
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-[4px]">
             <span className="text-[21px] font-bold tracking-[-0.02em]">{user.displayName || "이름 없음"}</span>
             <span className="font-mono text-[13px] text-[#8a887f]">@{handle}</span>
+            <div className="flex items-center gap-[10px] text-[12.5px] text-[#8a887f]">
+              <Link href={`/profile/${handle}/following`} className="hover:text-[#0e0e0e]">
+                팔로잉 <span className="font-mono">{followCounts.following}</span>
+              </Link>
+              <Link href={`/profile/${handle}/followers`} className="hover:text-[#0e0e0e]">
+                팔로워 <span className="font-mono">{followCounts.followers}</span>
+              </Link>
+            </div>
           </div>
           <div className="ml-auto flex items-center gap-[8px]">
+            <FollowButton authorId={user.uid} />
             {Boolean(user.subscriptionPrice) && (
               <SubscribeButton authorId={user.uid} authorName={user.displayName} price={user.subscriptionPrice!} />
             )}

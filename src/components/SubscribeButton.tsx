@@ -48,7 +48,16 @@ export function SubscribeButton({
     };
   }, [authorId, user]);
 
-  if (user && user.uid === authorId) return null;
+  // Self-subscribing makes no sense, so the actual button never renders here — but silently
+  // showing nothing at all reads as "the subscription feature is broken" to the author looking at
+  // their own profile, so show a passive confirmation label instead.
+  if (user && user.uid === authorId) {
+    return (
+      <span className="text-[12.5px] text-[#8a887f]">
+        구독료 월 {price.toLocaleString()}원 · 방문자에게 구독 버튼이 표시됩니다
+      </span>
+    );
+  }
 
   async function handleSubscribe() {
     if (!user || user.isAnonymous) {
