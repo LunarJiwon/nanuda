@@ -366,6 +366,21 @@ async function writeNotification(
   }
 }
 
+/** One doc per successful subscription charge — `subscriptions/{subId}` only holds *current*
+ * state (price, currentPeriodEnd), so 구독 관리하기's earnings summary (earnings-client.ts) needs
+ * this actual transaction log to sum instead. Best-effort: a failure here shouldn't undo an
+ * already-successful Toss charge, just log it. */
+async function writeSubscriptionPayment(
+  db: Firestore,
+  input: { authorId: string; subscriberId: string; amount: number; kind: "initial" | "renewal" }
+): Promise<void> {
+  try {
+    await db.collection("subscriptionPayments").add({ ...input, paidAt: Timestamp.now() });
+  } catch (err) {
+    console.error("[writeSubscriptionPayment] failed", input.authorId, input.subscriberId, err);
+  }
+}
+
 /**
  * Callable — confirms a reader→writer 응원(tip) payment with Toss after the client-side SDK
  * redirects back from Toss's hosted payment window. This confirm call is what actually captures
@@ -526,6 +541,7 @@ export const confirmSubscription = onCall({ secrets: [TOSS_SECRET_KEY] }, async 
 
   const now = Timestamp.now();
   await db.collection("billingKeys").doc(subId).set({ billingKey, customerKey });
+  await writeSubscriptionPayment(db, { authorId, subscriberId: auth.uid, amount: price, kind: "initial" });
   await subRef.set(
     {
       authorId,
@@ -609,7 +625,7 @@ export const chargeActiveSubscriptions = onSchedule(
 
     for (const subDoc of dueSnap.docs) {
       const subId = subDoc.id;
-      const sub = subDoc.data() as { price: number };
+      const sub = subDoc.data() as { price: number; authorId: string; subscriberId: string };
       try {
         const billingSnap = await db.collection("billingKeys").doc(subId).get();
         const billing = billingSnap.data() as { billingKey: string; customerKey: string } | undefined;
@@ -637,6 +653,12 @@ export const chargeActiveSubscriptions = onSchedule(
           continue;
         }
 
+        await writeSubscriptionPayment(db, {
+          authorId: sub.authorId,
+          subscriberId: sub.subscriberId,
+          amount: sub.price,
+          kind: "renewal",
+        });
         await subDoc.ref.update({
           currentPeriodEnd: Timestamp.fromMillis(Date.now() + SUBSCRIPTION_PERIOD_MS),
           updatedAt: Timestamp.now(),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
@@ -53,9 +54,9 @@ export function SubscribeButton({
   // their own profile, so show a passive confirmation label instead.
   if (user && user.uid === authorId) {
     return (
-      <span className="text-[12.5px] text-[#8a887f]">
-        구독료 월 {price.toLocaleString()}원 · 방문자에게 구독 버튼이 표시됩니다
-      </span>
+      <Link href="/settings/subscription" className="text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e] underline">
+        구독료 월 {price.toLocaleString()}원 · 구독 관리하기
+      </Link>
     );
   }
 

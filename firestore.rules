@@ -140,7 +140,10 @@ service cloud.firestore {
     // 'paid'/'failed' once it's actually verified the payment with Toss — a client can never mark
     // its own payment as paid. No self-tipping. Fixed amount presets only, for now.
     match /supports/{orderId} {
-      allow get: if isSignedIn()
+      // `list` (not just `get`) is what lets an author query their own paid supports for the
+      // 구독 관리하기 earnings summary (getAuthorEarnings in earnings-client.ts) — evaluated
+      // per-document exactly like `get`, so this doesn't expose anyone else's records.
+      allow get, list: if isSignedIn()
         && (resource.data.supporterId == request.auth.uid || resource.data.authorId == request.auth.uid);
       allow create: if isVerifiedUser()
         && request.resource.data.supporterId == request.auth.uid
@@ -167,8 +170,30 @@ service cloud.firestore {
     // never create/update one directly, since that would let someone grant themselves access
     // without actually paying.
     match /subscriptions/{subId} {
-      allow get: if isSignedIn()
+      // `list` lets an author query their own subscriber roster (구독 관리하기's 구독자 현황) —
+      // same per-document evaluation as `get`, see the `supports` comment above.
+      allow get, list: if isSignedIn()
         && (resource.data.subscriberId == request.auth.uid || resource.data.authorId == request.auth.uid);
+    }
+
+    // One doc per successful subscription charge (initial + each renewal) — written only by
+    // confirmSubscription/chargeActiveSubscriptions (Admin SDK). Exists specifically so
+    // 구독 관리하기's earnings summary has real transaction history to sum, since `subscriptions`
+    // itself only holds *current* state (price, currentPeriodEnd), not a payment log.
+    match /subscriptionPayments/{id} {
+      allow get, list: if isSignedIn()
+        && (resource.data.authorId == request.auth.uid || resource.data.subscriberId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // An author's own payout bank details (구독 관리하기's 정산 계좌 정보) — real PII, so this is
+    // deliberately narrower than every other collection here: owner-only in every direction, and
+    // no `list` at all (nobody ever browses this collection through the app; the site operator
+    // reviews it directly in the Firebase Console when processing a manual settlement — see
+    // SETUP.md's "no admin role" scope cut, which this follows the same way).
+    match /payoutInfo/{uid} {
+      allow get, create, update: if isSignedIn() && request.auth.uid == uid;
+      allow list, delete: if false;
     }
 
     // The actual Toss billing key for a subscription (`billingKeys/{authorId}_{subscriberId}`),

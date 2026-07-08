@@ -160,6 +160,13 @@ export function Header() {
               프로필 편집
             </Link>
             <Link
+              href="/settings/subscription"
+              onClick={closeProfile}
+              className="block w-full text-left text-[13.5px] text-[#0e0e0e] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f4f2ee]"
+            >
+              구독 관리하기
+            </Link>
+            <Link
               href="/settings"
               onClick={closeProfile}
               className="block w-full text-left text-[13.5px] text-[#0e0e0e] px-[8px] py-[9px] rounded-[5px] hover:bg-[#f4f2ee]"

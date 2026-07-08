@@ -49,6 +49,14 @@
         { "fieldPath": "authorId", "order": "ASCENDING" },
         { "fieldPath": "currentPeriodEnd", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "supports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "authorId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

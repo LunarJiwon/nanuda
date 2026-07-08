@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { useProgress } from "@/context/progress-context";
@@ -31,7 +32,6 @@ export default function ProfileEditPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
-  const [subscriptionPrice, setSubscriptionPrice] = useState("");
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -65,7 +65,6 @@ export default function ProfileEditPage() {
        guarded by `hydrated` so it never re-fires and clobbers in-progress edits. */
     setDisplayName(profile.displayName || "");
     setBio(profile.bio || "");
-    setSubscriptionPrice(profile.subscriptionPrice ? String(profile.subscriptionPrice) : "");
     setWebsite(profile.links?.website || "");
     setInstagram(profile.links?.instagram || "");
     setHydrated(true);
@@ -79,11 +78,6 @@ export default function ProfileEditPage() {
     if (!user) return;
     if (!linksValid) {
       showToast("링크는 http(s):// 로 시작하는 올바른 URL 형식이어야 합니다.", "error");
-      return;
-    }
-    const trimmedPrice = subscriptionPrice.trim();
-    if (trimmedPrice && (!/^\d+$/.test(trimmedPrice) || Number(trimmedPrice) < 1000)) {
-      showToast("구독료는 1,000원 이상의 숫자로 입력해주세요.", "error");
       return;
     }
     setSaving(true);
@@ -103,7 +97,6 @@ export default function ProfileEditPage() {
             website: website.trim(),
             instagram: instagram.trim(),
           },
-          subscriptionPrice: trimmedPrice ? Number(trimmedPrice) : null,
           ...(photoURL !== undefined ? { photoURL } : {}),
           ...(coverURL !== undefined ? { coverURL } : {}),
         });
@@ -163,7 +156,13 @@ export default function ProfileEditPage() {
 
   return (
     <section className="px-6 pt-12 pb-[60px] max-w-[600px] mx-auto">
-      <h1 className="font-bold text-[28px] tracking-[-0.03em] mb-[26px]">프로필 편집</h1>
+      <h1 className="font-bold text-[28px] tracking-[-0.03em] mb-[10px]">프로필 편집</h1>
+      <Link
+        href="/settings/subscription"
+        className="inline-block text-[12.5px] text-[#54524c] underline mb-[26px]"
+      >
+        구독료·구독자·매출은 구독 관리하기에서 확인하세요 →
+      </Link>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div>
@@ -250,22 +249,6 @@ export default function ProfileEditPage() {
             placeholder="한 줄 소개"
             className="w-full text-[14px] px-[14px] py-[11px] border border-[#e0ded8] rounded-[3px] bg-[#faf9f7] text-[#0e0e0e] outline-none"
           />
-        </label>
-
-        <label className="flex flex-col gap-[6px]">
-          <span className="text-[12.5px] text-[#8a887f]">월 구독료 (원) · 비워두면 구독을 받지 않습니다</span>
-          <input
-            value={subscriptionPrice}
-            onChange={(e) => setSubscriptionPrice(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="예: 5000"
-            inputMode="numeric"
-            className="w-full text-[14px] font-mono px-[14px] py-[11px] border border-[#e0ded8] rounded-[3px] bg-[#faf9f7] text-[#0e0e0e] outline-none"
-          />
-          {profile?.subscriptionPrice ? (
-            <p className="text-[11.5px] text-[#b0aea6] m-0">
-              가격을 바꿔도 이미 구독 중인 독자의 결제 금액에는 영향이 없습니다.
-            </p>
-          ) : null}
         </label>
 
         <label className="flex flex-col gap-[6px]">
