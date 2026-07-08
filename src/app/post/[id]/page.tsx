@@ -107,35 +107,38 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
       {isArt && (
         <>
-          <CoverImage
-            src={post.coverImageURL}
-            alt={post.title}
-            aspectRatio={post.ratio || "1/1"}
-            placeholderLabel={post.subtitle || "artwork"}
-            colorA="#e4e2dc"
-            colorB="#eeece7"
-            className="!border-0 rounded-[4px] mb-[24px] text-[12px] text-[#a9a79e]"
-          />
-          <h1 className="font-bold text-[26px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
-          {authorHandle ? (
-            <Link
-              href={`/profile/${authorHandle}`}
-              className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e] mb-[10px]"
-            >
-              <Avatar src={author?.photoURL} name={post.authorName} size={20} />
-              {post.authorName}
-            </Link>
+          {/* Title leads, then every photo attached shows inline in the body in order (no single
+              image pulled out as a "cover" anymore — that hid everything past the first photo on
+              a multi-photo post), and the author/engagement row moves below all of it. */}
+          <h1 className="font-bold text-[28px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
+          {post.subtitle && <p className="text-[13px] text-[#8a887f] mb-[20px]">{post.subtitle}</p>}
+
+          {post.visibility === "subscribers" ? (
+            <PremiumPostBody
+              postId={post.id}
+              authorId={post.authorId}
+              authorName={post.authorName}
+              price={author?.subscriptionPrice ?? 0}
+            />
           ) : (
-            <span className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] mb-[10px]">
-              <Avatar src={author?.photoURL} name={post.authorName} size={20} />
-              {post.authorName}
-            </span>
+            post.content && <PostBody content={post.content} />
           )}
-          {/* The subtitle is the actual one-line description the author typed — the excerpt is
-              just an auto-derived slice of the body, which now renders in full right below this,
-              so showing it here too just repeats the same text twice. */}
-          {post.subtitle && <p className="text-[12px] text-[#8a887f] mb-[14px]">{post.subtitle}</p>}
-          <div className="flex items-center gap-[10px] mb-6">
+
+          <div className="flex items-center gap-[10px] mt-[26px] pt-[20px] border-t border-[#e8e7e3]">
+            {authorHandle ? (
+              <Link
+                href={`/profile/${authorHandle}`}
+                className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f] hover:text-[#0e0e0e]"
+              >
+                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
+                {post.authorName}
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-[6px] text-[12.5px] text-[#8a887f]">
+                <Avatar src={author?.photoURL} name={post.authorName} size={22} />
+                {post.authorName}
+              </span>
+            )}
             <span className="text-[12px] text-[#8a887f]">
               조회 <span className="font-mono">{post.viewCount}</span>
             </span>
@@ -149,17 +152,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               />
             </div>
           </div>
-
-          {post.visibility === "subscribers" ? (
-            <PremiumPostBody
-              postId={post.id}
-              authorId={post.authorId}
-              authorName={post.authorName}
-              price={author?.subscriptionPrice ?? 0}
-            />
-          ) : (
-            post.content && <PostBody content={post.content} />
-          )}
         </>
       )}
 

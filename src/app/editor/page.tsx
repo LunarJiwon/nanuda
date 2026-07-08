@@ -52,11 +52,13 @@ import { Spinner } from "@/components/Spinner";
 type FormatKind = "bold" | "italic" | "strike" | "code";
 
 /** Reconstructs editor blocks from an existing post for the "수정" flow — mirrors
- * buildPostPayload's own logic in reverse: daily/art posts show their cover as a separate figure
- * rather than an inline block (see that function's doc comment), so it's re-inserted here as its
- * own leading image block so the author can see/replace/reorder it like any other block. */
+ * buildPostPayload's own logic in reverse: only `daily` posts show their cover as a separate
+ * figure rather than an inline block (see that function's doc comment for why `art` no longer
+ * does), so only daily's cover is re-inserted here as its own leading image block. An `art` post
+ * published *before* this changed already has its cover excluded from `content` — re-editing one
+ * of those will show one fewer image than it actually has; re-saving fixes it going forward. */
 function blocksFromPost(post: PostForEdit): EditorBlock[] {
-  const showsCoverSeparately = post.category === "daily" || post.category === "art";
+  const showsCoverSeparately = post.category === "daily";
   const bodyBlocks = markdownToBlocks(post.content);
   const all: Omit<EditorBlock, "id">[] =
     showsCoverSeparately && post.coverImageURL
@@ -581,10 +583,13 @@ function EditorPageContent() {
     }
   }
 
-  /** Shared by handlePublish/handleSaveDraft. `daily`/`art` posts show coverImageURL as its own
-   * figure above the body (see post/[id]/page.tsx) — leaving that same block's image markdown in
-   * the body too would render the picture twice, so it's excluded from the body there. Other
-   * categories never render coverImageURL separately, so their cover block stays inline as-is.
+  /** Shared by handlePublish/handleSaveDraft. `daily` posts show coverImageURL as its own figure
+   * above the body (see post/[id]/page.tsx) — leaving that same block's image markdown in the body
+   * too would render the picture twice, so it's excluded from the body there. `art` posts used to
+   * do the same (a single hero image, rest of the content below), but per feedback that hid every
+   * photo past the first one on a multi-photo art post — art now keeps all of its image blocks
+   * inline in the body, same as any other category; `coverImageURL` is still computed below
+   * (unaffected either way) purely as the thumbnail /art's list grid and profile cards use.
    *
    * For a 구독자 전용 post, `payload.content` is deliberately left empty — the real body
    * (`fullContent`) gets written separately to posts/{id}/premium/body instead (see
@@ -602,7 +607,7 @@ function EditorPageContent() {
       blocks.find((b) => b.type === "circuit" && b.imageUrl) ??
       null;
     const coverImageURL = coverBlock?.imageUrl ?? null;
-    const showsCoverSeparately = category === "daily" || category === "art";
+    const showsCoverSeparately = category === "daily";
     const bodyBlocks = showsCoverSeparately && coverBlock ? blocks.filter((b) => b.id !== coverBlock.id) : blocks;
     const fullContent = blocksToMarkdown(bodyBlocks);
     const excerpt = deriveExcerpt(fullContent || subtitle || title);
