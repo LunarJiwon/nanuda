@@ -21,10 +21,13 @@ function PostCard({ post }: { post: Post }) {
       {showsCover && (
         <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
       )}
-      <span className="flex flex-col gap-[6px]">
+      {/* flex-1 + mt-auto on the date: pins it to the bottom of the grid row's stretched height
+          regardless of excerpt length, so a photo-less card's date lines up with a photo card's —
+          see the identical pattern (and rationale) in /daily/page.tsx's TextOnlyCard. */}
+      <span className="flex-1 flex flex-col gap-[6px]">
         <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
         <span className="text-[13px] text-[#77756c] leading-[1.55] line-clamp-4">{post.excerpt}</span>
-        <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+        <span className="text-[11.5px] text-[#b0aea6] mt-auto pt-[2px]">
           {formatDate(post.publishedAt)} · {post.readTime}
         </span>
       </span>

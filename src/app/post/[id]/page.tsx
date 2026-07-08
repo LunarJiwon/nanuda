@@ -95,7 +95,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   }).replace(/</g, "\\u003c");
 
   return (
-    <article className="px-6 pt-10 pb-16 max-w-[720px] mx-auto">
+    <article className={`px-6 pt-10 pb-16 mx-auto ${isArt ? "max-w-[880px]" : "max-w-[720px]"}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <ViewTracker postId={post.id} />
       <div className="flex items-center justify-between pb-6">
@@ -107,18 +107,16 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
       {isArt && (
         <>
-          <div className="bg-white p-[22px] border border-[#d8d4cc] shadow-[0_24px_50px_-20px_rgba(0,0,0,0.3)] mb-[22px]">
-            <CoverImage
-              src={post.coverImageURL}
-              alt={post.title}
-              aspectRatio={post.ratio || "1/1"}
-              placeholderLabel={post.subtitle || "artwork"}
-              colorA="#e4e2dc"
-              colorB="#eeece7"
-              className="min-w-[150px] !border-0 text-[12px] text-[#a9a79e]"
-            />
-          </div>
-          <h1 className="font-bold text-[30px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
+          <CoverImage
+            src={post.coverImageURL}
+            alt={post.title}
+            aspectRatio={post.ratio || "1/1"}
+            placeholderLabel={post.subtitle || "artwork"}
+            colorA="#e4e2dc"
+            colorB="#eeece7"
+            className="!border-0 rounded-[4px] mb-[24px] text-[12px] text-[#a9a79e]"
+          />
+          <h1 className="font-bold text-[26px] leading-[1.15] tracking-[-0.03em] mb-[8px]">{post.title}</h1>
           {authorHandle ? (
             <Link
               href={`/profile/${authorHandle}`}

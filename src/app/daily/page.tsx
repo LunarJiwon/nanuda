@@ -19,11 +19,16 @@ export const metadata: Metadata = {
  * the same space a photo card would occupy. */
 function TextOnlyCard({ post }: { post: Post }) {
   return (
-    <div className="flex flex-col gap-[8px] py-[2px]">
+    // `flex-1` + `mt-auto` on the date below: since the grid row stretches every card's <Link> to
+    // the tallest one in that row (CSS Grid's default align-items:stretch), a text-only card's own
+    // variable-height excerpt would otherwise leave its date sitting at a different height than a
+    // photo card's in the same row — this pins it to the bottom of the stretched card instead,
+    // matching the photo-card branch below exactly.
+    <div className="flex-1 flex flex-col gap-[8px] py-[2px]">
       <span className="text-[20px] font-bold tracking-[-0.015em] leading-[1.3]">{post.title}</span>
       {post.subtitle && <span className="text-[13.5px] text-[#77756c] leading-[1.5]">{post.subtitle}</span>}
       <p className="text-[13px] text-[#8a887f] leading-[1.6] line-clamp-4 m-0">{post.excerpt}</p>
-      <span className="text-[11.5px] text-[#b0aea6] mt-[4px]">
+      <span className="text-[11.5px] text-[#b0aea6] mt-auto pt-[4px]">
         {formatDate(post.publishedAt)} · {post.readTime}
       </span>
     </div>
@@ -51,10 +56,10 @@ export default async function DailyPage() {
                 {post.coverImageURL ? (
                   <>
                     <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="photo" />
-                    <span className="flex flex-col gap-[6px]">
+                    <span className="flex-1 flex flex-col gap-[6px]">
                       <span className="text-[19px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
                       <span className="text-[13px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-                      <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+                      <span className="text-[11.5px] text-[#b0aea6] mt-auto pt-[2px]">
                         {formatDate(post.publishedAt)} · {post.readTime}
                       </span>
                     </span>

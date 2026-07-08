@@ -121,6 +121,58 @@ function EditorPageContent() {
   // that just finished publishing (which navigates away right after, unmounting this page too).
   const publishedRef = useRef(false);
 
+  // Tracks whether there's anything typed that hasn't been saved yet, for the
+  // confirm-before-leaving prompt below. A ref (not state) since it's only ever read from event
+  // listeners, never rendered.
+  const isDirtyRef = useRef(false);
+  // Skips the very first run of the dirty-watcher effect (every effect fires once on mount too,
+  // which would otherwise immediately mark a brand-new empty editor as "dirty"), and also skips
+  // marking dirty while the ?edit= effect is actively populating state from a loaded post.
+  const skipDirtyRef = useRef(true);
+
+  useEffect(() => {
+    if (skipDirtyRef.current) {
+      skipDirtyRef.current = false;
+      return;
+    }
+    isDirtyRef.current = true;
+  }, [title, subtitle, tags, blocks, category, isSubscriberOnly]);
+
+  // Covers a real page unload (refresh, close, typed URL, external link) — browsers show their
+  // own generic "leave site?" wording here, ignoring any custom message.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirtyRef.current) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Covers in-app navigation (clicking any next/link <Link> elsewhere on the site) — App Router
+  // has no built-in "confirm before route change" hook, so this intercepts the click in the
+  // capture phase, before Next's own click handler on the same <a> runs in the bubble phase.
+  // Confirming lets the event continue normally (Next still navigates); cancelling stops it here.
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (!isDirtyRef.current) return;
+      const anchor = (e.target as HTMLElement | null)?.closest("a");
+      if (!anchor || anchor.target === "_blank") return;
+      const href = anchor.getAttribute("href");
+      if (!href || !href.startsWith("/")) return; // external/mailto/etc. — beforeunload covers those
+      if (new URL(href, window.location.origin).pathname === window.location.pathname) return;
+      const confirmed = window.confirm(
+        "작성 중인 내용이 저장되지 않았습니다. 이 페이지를 벗어나시겠습니까?"
+      );
+      if (!confirmed) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, []);
+
   // If the editor unmounts (navigating away, closing the tab isn't caught by this — see
   // deleteAllPostImages' doc comment) without ever publishing, every image already uploaded to
   // `posts/{tempPostId}/` (decision #9: images can upload before the post itself is saved) has
@@ -197,6 +249,9 @@ function EditorPageContent() {
           router.replace("/editor");
           return;
         }
+        // These setters are about to fire the dirty-watcher effect too — this isn't the user
+        // typing anything, it's the post being loaded in, so it shouldn't count as unsaved edits.
+        skipDirtyRef.current = true;
         setTitle(post.title);
         setSubtitle(post.subtitle);
         setCategory(post.category);
@@ -607,6 +662,7 @@ function EditorPageContent() {
         }
         if (payload.visibility === "subscribers") await setPremiumContent(id, fullContent);
         publishedRef.current = true;
+        isDirtyRef.current = false;
         // Best-effort — a missed revalidation just means the list page is stale for up to the
         // normal 60s window instead of instant, not a broken publish.
         fetch("/api/revalidate", {
@@ -658,6 +714,7 @@ function EditorPageContent() {
         // abandon-cleanup effect shouldn't sweep them even if the editor is closed without
         // publishing afterward.
         publishedRef.current = true;
+        isDirtyRef.current = false;
         showToast("임시저장되었습니다.");
       });
     } catch (err) {
