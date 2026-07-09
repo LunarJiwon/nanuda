@@ -15,6 +15,7 @@ export default function SettingsPage() {
 
   const [commentNotif, setCommentNotif] = useState(true);
   const [likeNotif, setLikeNotif] = useState(true);
+  const [newPostNotif, setNewPostNotif] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -29,6 +30,7 @@ export default function SettingsPage() {
     /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration, guarded by `hydrated` */
     setCommentNotif(profile.notificationSettings?.comment !== false);
     setLikeNotif(profile.notificationSettings?.like !== false);
+    setNewPostNotif(profile.notificationSettings?.newPost !== false);
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [profile, hydrated]);
@@ -39,7 +41,7 @@ export default function SettingsPage() {
     try {
       await withProgress(() =>
         updateUserProfile(user.uid, {
-          notificationSettings: { comment: commentNotif, like: likeNotif },
+          notificationSettings: { comment: commentNotif, like: likeNotif, newPost: newPostNotif },
         })
       );
       showToast("설정이 저장되었습니다.");
@@ -84,6 +86,18 @@ export default function SettingsPage() {
             type="checkbox"
             checked={likeNotif}
             onChange={(e) => setLikeNotif(e.target.checked)}
+            className="w-[18px] h-[18px] cursor-pointer accent-[#0e0e0e] flex-none"
+          />
+        </label>
+        <label className="flex items-center justify-between gap-[12px] border border-[#e6e4de] rounded-[6px] px-[16px] py-[14px] cursor-pointer">
+          <span className="flex flex-col gap-[2px]">
+            <span className="text-[14px] text-[#0e0e0e]">새 글 알림</span>
+            <span className="text-[12px] text-[#8a887f]">팔로우한 작가가 새 글을 올리면 알려드립니다.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={newPostNotif}
+            onChange={(e) => setNewPostNotif(e.target.checked)}
             className="w-[18px] h-[18px] cursor-pointer accent-[#0e0e0e] flex-none"
           />
         </label>

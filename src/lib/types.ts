@@ -80,6 +80,9 @@ export interface AppUser {
   notificationSettings?: {
     comment?: boolean;
     like?: boolean;
+    /** New post by someone this user follows (see the Follow doc below) — public posts only,
+     * distinct from `new_subscriber_post` which is the paid-subscriber-only-content notice. */
+    newPost?: boolean;
   };
   createdAt: string;
 }
@@ -123,6 +126,7 @@ export type NotificationType =
   | "subscription_started"
   | "subscription_canceled"
   | "new_subscriber_post"
+  | "new_post"
   | "comment"
   | "reply"
   | "like";

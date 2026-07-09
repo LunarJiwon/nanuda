@@ -345,7 +345,12 @@ function tossAuthHeader(): string {
   return `Basic ${Buffer.from(`${TOSS_SECRET_KEY.value()}:`).toString("base64")}`;
 }
 
-type NotificationType = "support" | "subscription_started" | "subscription_canceled" | "new_subscriber_post";
+type NotificationType =
+  | "support"
+  | "subscription_started"
+  | "subscription_canceled"
+  | "new_subscriber_post"
+  | "new_post";
 
 /** Writes one `notifications/{uid}/items/{id}` doc — the only way these are ever created, see
  * firestore.rules. Never throws: a notification failing to write shouldn't fail the payment/
@@ -672,35 +677,66 @@ export const chargeActiveSubscriptions = onSchedule(
 
 /**
  * Fires on every write to a post, but only actually does anything on the transition INTO
- * `status == 'published'` (covers both a fresh publish and a 임시저장 draft later published) for a
- * `visibility: 'subscribers'` post — re-saving an already-published post doesn't re-notify.
- * Notifies every subscriber whose access is currently paid-through, not just `status == 'active'`
- * ones, matching the same access rule as firestore.rules' hasActiveAccess().
+ * `status == 'published'` (covers both a fresh publish and a 임시저장 draft later published) —
+ * re-saving an already-published post doesn't re-notify. Two independent notification paths:
+ * - `visibility: 'subscribers'` posts additionally notify every subscriber whose access is
+ *   currently paid-through, not just `status == 'active'` ones, matching the same access rule as
+ *   firestore.rules' hasActiveAccess().
+ * - Every post (public or subscribers-only) notifies the author's followers — the free "새 글 알림
+ *   받기" relationship (see the Follow type doc in src/lib/types.ts) — except those who've opted
+ *   out via notificationSettings.newPost, and except anyone already notified via the subscriber
+ *   path above (a follower who's also a paying subscriber shouldn't get two notices for the same
+ *   post).
  */
 export const notifySubscribersOfNewPost = onDocumentWritten("posts/{postId}", async (event) => {
   const before = event.data?.before?.data();
   const after = event.data?.after?.data();
   if (!after) return;
   if (before?.status === "published" || after.status !== "published") return;
-  if (after.visibility !== "subscribers") return;
 
   const db = getFirestore();
-  const subsSnap = await db
-    .collection("subscriptions")
-    .where("authorId", "==", after.authorId)
-    .where("currentPeriodEnd", ">", Timestamp.now())
-    .get();
-  if (subsSnap.empty) return;
-
   const postId = event.params.postId;
-  await Promise.all(
-    subsSnap.docs.map((d) =>
-      writeNotification(db, d.data().subscriberId, {
-        type: "new_subscriber_post",
-        title: "새 구독자 전용 글이 올라왔습니다",
-        body: after.title ?? "",
-        link: `/post/${postId}`,
-      })
-    )
-  );
+  const notifyTasks: Promise<void>[] = [];
+  const alreadyNotified = new Set<string>();
+
+  if (after.visibility === "subscribers") {
+    const subsSnap = await db
+      .collection("subscriptions")
+      .where("authorId", "==", after.authorId)
+      .where("currentPeriodEnd", ">", Timestamp.now())
+      .get();
+    for (const d of subsSnap.docs) {
+      const subscriberId = d.data().subscriberId as string;
+      alreadyNotified.add(subscriberId);
+      notifyTasks.push(
+        writeNotification(db, subscriberId, {
+          type: "new_subscriber_post",
+          title: "새 구독자 전용 글이 올라왔습니다",
+          body: after.title ?? "",
+          link: `/post/${postId}`,
+        })
+      );
+    }
+  }
+
+  const followsSnap = await db.collection("follows").where("followeeId", "==", after.authorId).get();
+  const followerIds = followsSnap.docs
+    .map((d) => d.data().followerId as string)
+    .filter((uid) => !alreadyNotified.has(uid));
+  if (followerIds.length > 0) {
+    const followerUsers = await Promise.all(followerIds.map((uid) => db.collection("users").doc(uid).get()));
+    followerUsers.forEach((snap, i) => {
+      if (snap.data()?.notificationSettings?.newPost === false) return;
+      notifyTasks.push(
+        writeNotification(db, followerIds[i], {
+          type: "new_post",
+          title: `${after.authorName ?? "작가"}님의 새 글이 올라왔습니다`,
+          body: after.title ?? "",
+          link: `/post/${postId}`,
+        })
+      );
+    });
+  }
+
+  await Promise.all(notifyTasks);
 });
