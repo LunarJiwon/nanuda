@@ -1,12 +1,83 @@
 "use client";
 
-import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
+import { useEffect, useState, type DragEvent, type FocusEvent, type KeyboardEvent } from "react";
 import { AutoTextarea } from "@/components/AutoTextarea";
 import { BlockMenu } from "@/components/BlockMenu";
 import { Spinner } from "@/components/Spinner";
 import { CODE_LANGUAGES, type BlockType, type EditorBlock } from "@/lib/blocks";
 
 type FieldRefSetter = (node: HTMLTextAreaElement | HTMLInputElement | null) => void;
+
+/** Custom-styled replacement for a native <select> — matches BlockMenu's own popover chrome
+ * (white panel, border, shadow) instead of the browser's unstyled native dropdown list, which a
+ * native <select> can't be styled into regardless of how its closed trigger is dressed up. */
+function CodeLanguageDropdown({
+  value,
+  onChange,
+  isLight,
+}: {
+  value: string;
+  onChange: (language: string) => void;
+  isLight: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = CODE_LANGUAGES.find((l) => l.value === value)?.label ?? "일반 텍스트";
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      const target = e.target as Element | null;
+      if (target?.closest("[data-lang-menu-zone]")) return;
+      setOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className="relative" data-lang-menu-zone={open ? "" : undefined}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-[5px] font-mono text-[10px] tracking-[0.04em] rounded-[3px] border px-[6px] py-[3px] cursor-pointer ${
+          isLight ? "bg-white text-[#54524c] border-[#e0ded8]" : "bg-[#1e1e1e] text-[#a9a79e] border-[#333]"
+        }`}
+      >
+        {current}
+        <svg
+          width="9"
+          height="9"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          className={`flex-none transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="animate-menuin absolute left-0 top-full mt-[4px] z-20 w-[180px] max-h-[260px] overflow-y-auto border border-[#e6e4de] rounded-[6px] bg-white shadow-[0_14px_34px_-14px_rgba(0,0,0,0.25)] p-[4px]">
+          {CODE_LANGUAGES.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              onClick={() => {
+                onChange(l.value);
+                setOpen(false);
+              }}
+              className={`block w-full text-left font-mono text-[12px] px-[9px] py-[6px] rounded-[4px] cursor-pointer hover:bg-[#f4f2ee] ${
+                l.value === value ? "text-[#0e0e0e] font-semibold" : "text-[#54524c]"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function BlockRow({
   block,
@@ -186,21 +257,11 @@ export function BlockRow({
             }`}
           >
             <div className="flex items-center justify-between gap-[10px] mb-[10px]">
-              <select
+              <CodeLanguageDropdown
                 value={block.language || "plaintext"}
-                onChange={(e) => onLanguageChange(e.target.value)}
-                className={`font-mono text-[10px] tracking-[0.04em] rounded-[3px] border px-[6px] py-[3px] outline-none cursor-pointer ${
-                  isLight
-                    ? "bg-white text-[#54524c] border-[#e0ded8]"
-                    : "bg-[#1e1e1e] text-[#a9a79e] border-[#333]"
-                }`}
-              >
-                {CODE_LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+                onChange={onLanguageChange}
+                isLight={isLight}
+              />
               <div
                 className={`flex items-center rounded-[3px] border p-[1px] ${
                   isLight ? "border-[#e0ded8]" : "border-[#333]"
