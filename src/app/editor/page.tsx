@@ -44,6 +44,8 @@ import {
 } from "@/lib/posts-client";
 import { Spinner } from "@/components/Spinner";
 
+const MAX_TAGS = 3;
+
 // Implementation note (documented in SETUP.md): the design's text-like blocks are
 // contentEditable divs formatted via document.execCommand. We use plain <input>/<textarea>
 // fields instead — visually identical — and reimplement the B/I/S/code toolbar as Markdown
@@ -546,7 +548,10 @@ function EditorPageContent() {
     setDragOver(null);
   }
 
-  /** Adds every non-empty, whitespace-split fragment as a tag (deduped, `#` stripped). */
+  /** Adds every non-empty, whitespace-split fragment as a tag (deduped, `#` stripped), up to
+   * MAX_TAGS total — extra fragments in the same paste/commit are silently dropped rather than
+   * erroring, since going over is a common accident (pasting several words at once), not a
+   * mistake worth interrupting the author over. */
   function commitTagFragments(raw: string) {
     const fragments = raw
       .split(/\s+/)
@@ -555,7 +560,10 @@ function EditorPageContent() {
     if (!fragments.length) return;
     setTags((t) => {
       const merged = [...t];
-      for (const f of fragments) if (!merged.includes(f)) merged.push(f);
+      for (const f of fragments) {
+        if (merged.length >= MAX_TAGS) break;
+        if (!merged.includes(f)) merged.push(f);
+      }
       return merged;
     });
   }
@@ -993,13 +1001,18 @@ function EditorPageContent() {
               </button>
             </span>
           ))}
-          <input
-            value={tagInput}
-            onChange={handleTagInputChange}
-            onKeyDown={handleTagKeyDown}
-            placeholder="＋ 태그 (스페이스로 구분)"
-            className="border-none bg-none text-[11.5px] text-[#54524c] px-[6px] py-[3px] w-[130px] outline-none"
-          />
+          {tags.length < MAX_TAGS && (
+            <input
+              value={tagInput}
+              onChange={handleTagInputChange}
+              onKeyDown={handleTagKeyDown}
+              placeholder="＋ 태그 (스페이스로 구분)"
+              className="border-none bg-none text-[11.5px] text-[#54524c] px-[6px] py-[3px] w-[130px] outline-none"
+            />
+          )}
+          <span className="text-[11px] text-[#c2c0b8] ml-auto">
+            {tags.length}/{MAX_TAGS}
+          </span>
         </div>
 
         {category === "daily" && (
