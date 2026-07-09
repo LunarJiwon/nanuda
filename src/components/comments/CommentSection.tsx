@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useAuth, isRealUser, isVerifiedUser } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
@@ -80,6 +80,19 @@ function CommentForm({
 }) {
   const [content, setContent] = useState(initialValue);
   const [submitting, setSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // A reply prefilled with "@author " (see CommentSection below) should start with the cursor
+  // right after the tag, not before it — autoFocus alone leaves some browsers' textarea selection
+  // at position 0 when it already has a value at mount.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.setSelectionRange(el.value.length, el.value.length);
+    // Only ever needs to run once, right after this form mounts with its initial value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -100,6 +113,7 @@ function CommentForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[8px]">
       <textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={placeholder}
@@ -396,6 +410,7 @@ export function CommentSection({
                 {canCreateComment ? (
                   <CommentForm
                     placeholder={`${root.authorName}님에게 답글 남기기`}
+                    initialValue={`@${root.authorName} `}
                     onSubmit={(content) => postComment(content, root.id, root.authorId)}
                     onCancel={() => setReplyingTo(null)}
                     autoFocus
@@ -422,6 +437,7 @@ export function CommentSection({
                     {canCreateComment ? (
                       <CommentForm
                         placeholder={`${reply.authorName}님에게 답글 남기기`}
+                        initialValue={`@${reply.authorName} `}
                         onSubmit={(content) => postComment(content, reply.id, reply.authorId)}
                         onCancel={() => setReplyingTo(null)}
                         autoFocus
