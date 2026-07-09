@@ -19,10 +19,20 @@ export function ArchiveClient({
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("__all");
 
+  // Sorted by how many posts actually use each tag (ties keep first-seen order, via the stable
+  // sort below) rather than first-seen order alone, so the most-used tags — the ones worth
+  // recommending as a shortcut into the archive — surface first instead of wherever they
+  // happened to appear chronologically.
   const tagList = useMemo(() => {
-    const seen: string[] = [];
-    posts.forEach((p) => p.tags.forEach((t) => { if (!seen.includes(t)) seen.push(t); }));
-    return seen;
+    const counts = new Map<string, number>();
+    const order: string[] = [];
+    posts.forEach((p) =>
+      p.tags.forEach((t) => {
+        if (!counts.has(t)) order.push(t);
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      })
+    );
+    return order.sort((a, b) => counts.get(b)! - counts.get(a)!);
   }, [posts]);
 
   const filtered = useMemo(() => {
@@ -60,6 +70,9 @@ export function ArchiveClient({
             className="w-full text-[15px] py-[14px] pl-[42px] pr-[16px] border border-[#e0ded8] rounded-[3px] bg-[#faf9f7] text-[#0e0e0e] outline-none"
           />
         </div>
+        {tagList.length > 0 && (
+          <div className="text-[11px] tracking-[0.04em] text-[#a9a79e] mb-[8px]">추천 태그</div>
+        )}
         <div className="flex flex-wrap gap-[7px] mb-2">
           <button
             onClick={() => setTag("__all")}
