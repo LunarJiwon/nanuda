@@ -100,9 +100,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
         <ViewTracker postId={post.id} />
         <div className="flex items-center justify-between pb-6">
-          <Link href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">
+          {/* A plain <a>, not <Link> — the category list page is revalidated server-side right
+              after a publish (see the editor's /api/revalidate call), but Next's client-side
+              Router Cache can still serve an already-visited category page's stale snapshot for
+              up to staleTimes.static seconds (next.config.ts) regardless of that server-side
+              revalidation. A full navigation here always gets the freshest list. */}
+          <a href={`/${post.category}`} className="inline-flex items-center gap-[6px] text-[13px] text-[#8a887f]">
             ← {CATEGORY_LABEL[post.category]}로 돌아가기
-          </Link>
+          </a>
           <PostActions postId={post.id} authorId={post.authorId} category={post.category} />
         </div>
 
@@ -164,10 +169,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
       {isQuote && (
         <div className="pt-6 pb-2 text-center">
           <div className="text-[64px] leading-[0.5] text-[#d5d1c8]">&ldquo;</div>
-          <h1 className="font-semibold text-[clamp(24px,4vw,34px)] leading-[1.5] tracking-[-0.02em] mt-[18px] mb-[20px] text-balance">
+          <h1 className="font-semibold text-[clamp(24px,4vw,34px)] leading-[1.5] tracking-[-0.02em] mt-[18px] mb-[20px] whitespace-pre-line text-balance">
             {post.title}
           </h1>
-          <p className="text-[14px] text-[#8a887f] m-0">— {post.excerpt}</p>
+          {post.excerpt && <p className="text-[14px] text-[#8a887f] m-0">— {post.excerpt}</p>}
           <div className="flex items-center justify-center gap-[10px] mt-[18px]">
             <LikeButton postId={post.id} initialLikeCount={post.likeCount} authorId={post.authorId} />
             <SupportButton

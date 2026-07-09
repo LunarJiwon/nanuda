@@ -33,10 +33,12 @@ export default async function QuotePage() {
                 className="text-left border border-[#e8e7e3] bg-[#faf9f7] px-[20px] py-[22px] rounded-[3px] flex flex-col min-h-[180px] text-[#0e0e0e]"
               >
                 <span className="text-[34px] leading-[0.6] text-[#cbc7bf]">&ldquo;</span>
-                <span className="text-[16.5px] font-medium leading-[1.5] tracking-[-0.01em] mt-[8px]">
+                <span className="text-[16.5px] font-medium leading-[1.5] tracking-[-0.01em] mt-[8px] whitespace-pre-line">
                   {post.title}
                 </span>
-                <span className="mt-auto pt-[16px] text-[12.5px] text-[#8a887f]">— {post.excerpt}</span>
+                {post.excerpt && (
+                  <span className="mt-auto pt-[16px] text-[12.5px] text-[#8a887f]">— {post.excerpt}</span>
+                )}
               </Link>
             ))}
           </div>

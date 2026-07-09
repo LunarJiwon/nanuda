@@ -17,6 +17,7 @@ import { useToast } from "@/context/toast-context";
 import { useConfirm } from "@/context/confirm-context";
 import { useProgress } from "@/context/progress-context";
 import { BlockMenu } from "@/components/BlockMenu";
+import { AutoTextarea } from "@/components/AutoTextarea";
 import { BlockRow } from "./BlockRow";
 import {
   BLOCK_DEFAULT_CONTENT,
@@ -691,7 +692,11 @@ function EditorPageContent() {
     }
 
     const fullContent = blocksToMarkdown(bodyBlocks);
-    const excerpt = deriveExcerpt(fullContent || subtitle || title);
+    // 글귀's excerpt is the "— 출처" line shown on the detail page (see that page's isQuote
+    // branch) — it must stay exactly what the author typed in subtitle, empty included, rather
+    // than falling back to the quote text itself (which just duplicated the title in every list
+    // card whenever 출처 was left blank).
+    const excerpt = category === "quote" ? deriveExcerpt(subtitle) : deriveExcerpt(fullContent || subtitle || title);
     const readTime = computeReadTime(fullContent);
     const visibility =
       category !== "quote" && isSubscriberOnly && profile?.subscriptionPrice ? "subscribers" : "public";
@@ -939,14 +944,28 @@ function EditorPageContent() {
       )}
 
       <section className="px-5 pt-8 pb-24 max-w-[760px] mx-auto">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onFocus={handleFocusField("title")}
-          ref={registerRef("title")}
-          placeholder={category === "quote" ? "인용문을 입력하세요" : "제목 없음"}
-          className="w-full font-bold text-[38px] leading-[1.15] tracking-[-0.035em] text-[#0e0e0e] mb-[4px] bg-transparent outline-none placeholder:text-[#c2c0b8]"
-        />
+        {category === "quote" ? (
+          // 글귀 alone allows real line breaks in its title (the quote text itself) — every other
+          // category's title is a single-line headline, so a plain <input> (which can't hold a
+          // newline at all) stays correct for them.
+          <AutoTextarea
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={handleFocusField("title")}
+            innerRef={registerRef("title")}
+            placeholder="인용문을 입력하세요"
+            className="w-full font-bold text-[38px] leading-[1.15] tracking-[-0.035em] text-[#0e0e0e] mb-[4px] bg-transparent outline-none placeholder:text-[#c2c0b8]"
+          />
+        ) : (
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={handleFocusField("title")}
+            ref={registerRef("title")}
+            placeholder="제목 없음"
+            className="w-full font-bold text-[38px] leading-[1.15] tracking-[-0.035em] text-[#0e0e0e] mb-[4px] bg-transparent outline-none placeholder:text-[#c2c0b8]"
+          />
+        )}
         <input
           value={subtitle}
           onChange={(e) => setSubtitle(e.target.value)}
