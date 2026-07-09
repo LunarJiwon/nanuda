@@ -5,8 +5,17 @@ import { useMemo, useState } from "react";
 import { CATEGORY_LABEL, type Post } from "@/lib/types";
 import { formatDate } from "@/lib/date";
 import { chipClass } from "@/lib/chipStyle";
+import { AuthorByline } from "@/components/AuthorByline";
 
-export function ArchiveClient({ posts }: { posts: Post[] }) {
+export function ArchiveClient({
+  posts,
+  authorPhotos,
+}: {
+  posts: Post[];
+  /** uid -> photoURL, flattened server-side from a Map (see page.tsx) since a Client Component
+   * prop must be plain JSON-safe data. */
+  authorPhotos: Record<string, string | null>;
+}) {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("__all");
 
@@ -29,7 +38,7 @@ export function ArchiveClient({ posts }: { posts: Post[] }) {
     <>
       <section className="px-6 pt-14 pb-5 max-w-[900px] mx-auto">
         <h1 className="font-bold text-[clamp(30px,4.4vw,44px)] leading-[1.05] tracking-[-0.035em] mb-[22px]">
-          아카이브
+          전체 게시물
         </h1>
         <div className="relative mb-[22px]">
           <svg
@@ -85,6 +94,7 @@ export function ArchiveClient({ posts }: { posts: Post[] }) {
               <span className="text-[12.5px] text-[#8a887f]">
                 {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
               </span>
+              <AuthorByline name={post.authorName} photoURL={authorPhotos[post.authorId] ?? null} size={16} />
             </span>
             <span className="text-[11px] text-[#b0aea6] whitespace-nowrap">
               #{post.tags[0] || ""}

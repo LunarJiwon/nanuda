@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CoverImage } from "@/components/CoverImage";
+import { AuthorByline } from "@/components/AuthorByline";
 import { getPostsByCategory } from "@/lib/posts";
+import { getUsersByIds } from "@/lib/users";
 
 export const revalidate = 60;
 
@@ -13,6 +15,7 @@ export const metadata: Metadata = {
 
 export default async function ArtPage() {
   const posts = await getPostsByCategory("art");
+  const authors = await getUsersByIds(posts.map((p) => p.authorId));
 
   return (
     <section className="min-h-full bg-[#faf9f7]">
@@ -40,9 +43,14 @@ export default async function ArtPage() {
                   colorB="#eeece7"
                   className="rounded-none"
                 />
-                <span className="flex flex-col gap-[3px]">
+                <span className="flex flex-col items-center gap-[6px]">
                   <span className="text-[14px] font-semibold leading-[1.3]">{post.title}</span>
                   <span className="text-[12px] text-[#9a988f] leading-[1.4] line-clamp-2">{post.excerpt}</span>
+                  <AuthorByline
+                    name={post.authorName}
+                    photoURL={authors.get(post.authorId)?.photoURL ?? null}
+                    size={16}
+                  />
                 </span>
               </Link>
             ))}

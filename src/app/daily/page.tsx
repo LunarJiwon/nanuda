@@ -2,9 +2,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { CoverImage } from "@/components/CoverImage";
 import { TitleCoverCard } from "@/components/TitleCoverCard";
+import { AuthorByline } from "@/components/AuthorByline";
 import { getPostsByCategory } from "@/lib/posts";
+import { getUsersByIds } from "@/lib/users";
 import { formatDate } from "@/lib/date";
-import type { Post } from "@/lib/types";
+import type { AppUser, Post } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
 /** Photo-less 일상 entries used to fall back to CoverImage's generic diagonal-stripe "photo"
  * placeholder, which reads as a broken/missing image for a post that was never going to have one.
  * A solid-color title card (see TitleCoverCard) stands in for the image instead. */
-function TextOnlyCard({ post }: { post: Post }) {
+function TextOnlyCard({ post, author }: { post: Post; author?: AppUser }) {
   return (
     <>
       <TitleCoverCard title={post.title} seed={post.id} />
@@ -25,7 +27,8 @@ function TextOnlyCard({ post }: { post: Post }) {
         <span className="text-[20px] font-bold tracking-[-0.015em] leading-[1.3]">{post.title}</span>
         {post.subtitle && <span className="text-[13.5px] text-[#77756c] leading-[1.5]">{post.subtitle}</span>}
         <p className="text-[13px] text-[#8a887f] leading-[1.6] line-clamp-4 m-0">{post.excerpt}</p>
-        <span className="text-[11.5px] text-[#b0aea6] mt-[4px]">
+        <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} />
+        <span className="text-[11.5px] text-[#b0aea6]">
           {formatDate(post.publishedAt)} · {post.readTime}
         </span>
       </div>
@@ -35,6 +38,7 @@ function TextOnlyCard({ post }: { post: Post }) {
 
 export default async function DailyPage() {
   const posts = await getPostsByCategory("daily");
+  const authors = await getUsersByIds(posts.map((p) => p.authorId));
 
   return (
     <>
@@ -57,13 +61,14 @@ export default async function DailyPage() {
                     <span className="flex flex-col gap-[6px]">
                       <span className="text-[19px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
                       <span className="text-[13px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-                      <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+                      <AuthorByline name={post.authorName} photoURL={authors.get(post.authorId)?.photoURL ?? null} />
+                      <span className="text-[11.5px] text-[#b0aea6]">
                         {formatDate(post.publishedAt)} · {post.readTime}
                       </span>
                     </span>
                   </>
                 ) : (
-                  <TextOnlyCard post={post} />
+                  <TextOnlyCard post={post} author={authors.get(post.authorId)} />
                 )}
               </Link>
             ))}

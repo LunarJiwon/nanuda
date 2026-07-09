@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { AuthorByline } from "@/components/AuthorByline";
 import { getPostsByCategory } from "@/lib/posts";
+import { getUsersByIds } from "@/lib/users";
 
 export const revalidate = 60;
 
@@ -12,6 +14,7 @@ export const metadata: Metadata = {
 
 export default async function QuotePage() {
   const posts = await getPostsByCategory("quote");
+  const authors = await getUsersByIds(posts.map((p) => p.authorId));
 
   return (
     <>
@@ -36,9 +39,14 @@ export default async function QuotePage() {
                 <span className="text-[16.5px] font-medium leading-[1.5] tracking-[-0.01em] mt-[8px] whitespace-pre-line">
                   {post.title}
                 </span>
-                {post.excerpt && (
-                  <span className="mt-auto pt-[16px] text-[12.5px] text-[#8a887f]">— {post.excerpt}</span>
-                )}
+                <span className="mt-auto pt-[16px] flex flex-col gap-[8px]">
+                  <AuthorByline
+                    name={post.authorName}
+                    photoURL={authors.get(post.authorId)?.photoURL ?? null}
+                    size={16}
+                  />
+                  {post.excerpt && <span className="text-[12.5px] text-[#8a887f]">— {post.excerpt}</span>}
+                </span>
               </Link>
             ))}
           </div>

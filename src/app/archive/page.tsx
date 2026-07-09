@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getAllPublishedPosts } from "@/lib/posts";
+import { getUsersByIds } from "@/lib/users";
 import { ArchiveClient } from "./ArchiveClient";
 
 // No Algolia / full-text search yet (deliberate scope cut — see SETUP.md): at this scale we
@@ -15,5 +16,11 @@ export const metadata: Metadata = {
 
 export default async function ArchivePage() {
   const posts = await getAllPublishedPosts();
-  return <ArchiveClient posts={posts} />;
+  // A Client Component prop must be plain JSON-safe data, not a Map — so the author lookup is
+  // flattened to a plain { uid: photoURL } object here rather than passed as-is.
+  const authors = await getUsersByIds(posts.map((p) => p.authorId));
+  const authorPhotos = Object.fromEntries(
+    Array.from(authors.entries()).map(([uid, user]) => [uid, user.photoURL])
+  );
+  return <ArchiveClient posts={posts} authorPhotos={authorPhotos} />;
 }

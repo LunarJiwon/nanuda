@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { FadeInImage } from "@/components/FadeInImage";
 import { RotatingWord } from "@/components/RotatingWord";
+import { AuthorByline } from "@/components/AuthorByline";
 import { getPopularPosts, getRecentPosts } from "@/lib/posts";
+import { getUsersByIds } from "@/lib/users";
 import { CATEGORY_LABEL } from "@/lib/types";
 import { formatDate } from "@/lib/date";
-import type { Post } from "@/lib/types";
+import type { AppUser, Post } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, author }: { post: Post; author?: AppUser }) {
   return (
     <Link
       href={`/post/${post.id}`}
@@ -21,7 +23,8 @@ function PostCard({ post }: { post: Post }) {
     >
       <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.3]">{post.title}</span>
       <span className="text-[12.5px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-      <span className="text-[11.5px] text-[#b0aea6] mt-[2px]">
+      <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} size={16} />
+      <span className="text-[11.5px] text-[#b0aea6]">
         {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
       </span>
     </Link>
@@ -30,6 +33,7 @@ function PostCard({ post }: { post: Post }) {
 
 export default async function HomePage() {
   const [recentPosts, popularPosts] = await Promise.all([getRecentPosts(), getPopularPosts()]);
+  const authors = await getUsersByIds([...recentPosts, ...popularPosts].map((p) => p.authorId));
 
   return (
     <>
@@ -129,7 +133,7 @@ export default async function HomePage() {
           </div>
           <div className="grid gap-x-6 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
             {popularPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post} author={authors.get(post.authorId)} />
             ))}
           </div>
         </section>
@@ -147,7 +151,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid gap-x-6 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
             {recentPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post} author={authors.get(post.authorId)} />
             ))}
           </div>
         )}

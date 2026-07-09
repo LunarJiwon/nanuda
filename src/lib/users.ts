@@ -36,6 +36,21 @@ export async function getUserById(uid: string): Promise<AppUser | null> {
   }
 }
 
+/** Bulk-resolves post-list authors for cards that show a byline (see AuthorByline.tsx) — dedupes
+ * ids first since a category/archive page's posts are usually written by a handful of repeat
+ * authors, not one Firestore read per post. Missing users are simply absent from the returned
+ * map (same "degrade rather than throw" convention as getUserById). */
+export async function getUsersByIds(uids: string[]): Promise<Map<string, AppUser>> {
+  const unique = Array.from(new Set(uids));
+  const users = await Promise.all(unique.map((uid) => getUserById(uid)));
+  const map = new Map<string, AppUser>();
+  unique.forEach((uid, i) => {
+    const user = users[i];
+    if (user) map.set(uid, user);
+  });
+  return map;
+}
+
 /** Resolves `@handle` -> uid via the `handles/{handle}` collection, then loads the user doc. */
 export async function getUserByHandle(handle: string): Promise<AppUser | null> {
   try {
