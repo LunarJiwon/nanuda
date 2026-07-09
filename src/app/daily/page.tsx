@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CoverImage } from "@/components/CoverImage";
+import { TitleCoverCard } from "@/components/TitleCoverCard";
 import { getPostsByCategory } from "@/lib/posts";
 import { formatDate } from "@/lib/date";
 import type { Post } from "@/lib/types";
@@ -15,18 +16,11 @@ export const metadata: Metadata = {
 
 /** Photo-less 일상 entries used to fall back to CoverImage's generic diagonal-stripe "photo"
  * placeholder, which reads as a broken/missing image for a post that was never going to have one.
- * No image-shaped box at all here instead — just the post's own title/subtitle/excerpt filling
- * the same space a photo card would occupy. The image slot's height is still reserved (a blank
- * box) rather than collapsed to zero: relying on flex-1/mt-auto to push the date down to match a
- * stretched grid row instead made a card's date position depend on whether its particular row
- * happened to contain a photo post, so the same post looked different from one page load to the
- * next depending on its neighbors. Hidden below `sm:` — the grid is a single column on mobile, so
- * there's no sibling row to line up with, and the reserved 4:3 box (nearly full viewport width
- * there) would otherwise show as a huge blank gap before the title. */
+ * A solid-color title card (see TitleCoverCard) stands in for the image instead. */
 function TextOnlyCard({ post }: { post: Post }) {
   return (
     <>
-      <div className="hidden sm:block w-full" style={{ aspectRatio: "4/3" }} />
+      <TitleCoverCard title={post.title} seed={post.id} />
       <div className="flex flex-col gap-[8px]">
         <span className="text-[20px] font-bold tracking-[-0.015em] leading-[1.3]">{post.title}</span>
         {post.subtitle && <span className="text-[13.5px] text-[#77756c] leading-[1.5]">{post.subtitle}</span>}

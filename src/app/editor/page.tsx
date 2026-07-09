@@ -1006,7 +1006,7 @@ function EditorPageContent() {
           <div className="mb-[26px]">
             <label className="block text-[12px] text-[#8a887f] mb-[8px]">커버 이미지</label>
             {coverImageUrl ? (
-              <div className="relative w-full max-w-[280px]" style={{ aspectRatio: "4/3" }}>
+              <div className="relative w-full max-w-[280px] mx-auto" style={{ aspectRatio: "4/3" }}>
                 {/* User-uploaded content with unpredictable dimensions — plain <img> avoids next/image's required width/height. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1047,7 +1047,7 @@ function EditorPageContent() {
               </div>
             ) : (
               <label
-                className={`flex items-center justify-center gap-[8px] w-full max-w-[280px] border border-dashed border-[#cfcdc6] rounded-[3px] text-[11.5px] text-[#a9a79e] ${
+                className={`flex items-center justify-center gap-[8px] w-full max-w-[280px] mx-auto border border-dashed border-[#cfcdc6] rounded-[3px] text-[11.5px] text-[#a9a79e] ${
                   uploadingCover ? "cursor-wait" : "cursor-pointer"
                 }`}
                 style={{

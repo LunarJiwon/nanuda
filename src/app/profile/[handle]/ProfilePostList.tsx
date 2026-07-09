@@ -3,26 +3,21 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CoverImage } from "@/components/CoverImage";
+import { TitleCoverCard } from "@/components/TitleCoverCard";
 import { formatDate } from "@/lib/date";
 import { chipClass } from "@/lib/chipStyle";
 import type { Post } from "@/lib/types";
 
 /** Photo-less posts (any category, not just 일상) get the same title/excerpt/date-readtime layout
- * as a photo card, just without the image itself. The image slot's height is still reserved (a
- * blank box, not the diagonal-stripe placeholder) so every card in the grid ends up the same total
- * height — relying on flex-1/mt-auto to push the date down to match a stretched grid row instead
- * made a card's date position depend on whether its particular row happened to contain a photo
- * post, so the same post looked different from one page load to the next. Hidden below `sm:` — the
- * grid is a single column on mobile, so there's no sibling row to line up with, and the reserved
- * 4:3 box (nearly full viewport width there) would otherwise show as a huge blank gap before the
- * title. */
+ * as a photo card, just with a solid-color title card (see TitleCoverCard) standing in for the
+ * image instead of a blank box or the broken-image-looking diagonal-stripe placeholder. */
 function PostCard({ post }: { post: Post }) {
   return (
     <>
       {post.coverImageURL ? (
         <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="post" />
       ) : (
-        <div className="hidden sm:block w-full" style={{ aspectRatio: "4/3" }} />
+        <TitleCoverCard title={post.title} seed={post.id} />
       )}
       <span className="flex flex-col gap-[6px]">
         <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
