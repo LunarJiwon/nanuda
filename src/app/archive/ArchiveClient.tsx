@@ -104,10 +104,12 @@ export function ArchiveClient({
           >
             <span className="flex flex-col gap-[4px] min-w-0">
               <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
-              <span className="text-[12.5px] text-[#8a887f]">
-                {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
+              <span className="flex flex-wrap items-center gap-x-[10px] gap-y-[4px]">
+                <AuthorByline name={post.authorName} photoURL={authorPhotos[post.authorId] ?? null} size={16} />
+                <span className="text-[12.5px] text-[#8a887f]">
+                  {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
+                </span>
               </span>
-              <AuthorByline name={post.authorName} photoURL={authorPhotos[post.authorId] ?? null} size={16} />
             </span>
             <span className="text-[11px] text-[#b0aea6] whitespace-nowrap">
               #{post.tags[0] || ""}

@@ -23,13 +23,19 @@ function TextOnlyCard({ post, author }: { post: Post; author?: AppUser }) {
   return (
     <>
       <TitleCoverCard title={post.title} seed={post.id} />
-      <div className="flex flex-col gap-[8px]">
+      {/* flex-1 + mt-auto on the byline/date row: the grid row stretches every card's <Link> to
+          its tallest sibling (CSS Grid's default align-items:stretch), so without this a card
+          whose title/subtitle/excerpt happens to be short would leave its byline+date sitting
+          higher than a card with longer text right next to it in the same row. */}
+      <div className="flex-1 flex flex-col gap-[8px]">
         <span className="text-[20px] font-bold tracking-[-0.015em] leading-[1.3]">{post.title}</span>
         {post.subtitle && <span className="text-[13.5px] text-[#77756c] leading-[1.5]">{post.subtitle}</span>}
         <p className="text-[13px] text-[#8a887f] leading-[1.6] line-clamp-4 m-0">{post.excerpt}</p>
-        <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} />
-        <span className="text-[11.5px] text-[#b0aea6]">
-          {formatDate(post.publishedAt)} · {post.readTime}
+        <span className="mt-auto flex flex-wrap items-center gap-x-[10px] gap-y-[4px]">
+          <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} />
+          <span className="text-[11.5px] text-[#b0aea6]">
+            {formatDate(post.publishedAt)} · {post.readTime}
+          </span>
         </span>
       </div>
     </>
@@ -58,12 +64,17 @@ export default async function DailyPage() {
                 {post.coverImageURL ? (
                   <>
                     <CoverImage src={post.coverImageURL} alt={post.title} aspectRatio="4/3" placeholderLabel="photo" />
-                    <span className="flex flex-col gap-[6px]">
+                    <span className="flex-1 flex flex-col gap-[6px]">
                       <span className="text-[19px] font-semibold tracking-[-0.01em] leading-[1.25]">{post.title}</span>
                       <span className="text-[13px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-                      <AuthorByline name={post.authorName} photoURL={authors.get(post.authorId)?.photoURL ?? null} />
-                      <span className="text-[11.5px] text-[#b0aea6]">
-                        {formatDate(post.publishedAt)} · {post.readTime}
+                      <span className="mt-auto flex flex-wrap items-center gap-x-[10px] gap-y-[4px]">
+                        <AuthorByline
+                          name={post.authorName}
+                          photoURL={authors.get(post.authorId)?.photoURL ?? null}
+                        />
+                        <span className="text-[11.5px] text-[#b0aea6]">
+                          {formatDate(post.publishedAt)} · {post.readTime}
+                        </span>
                       </span>
                     </span>
                   </>

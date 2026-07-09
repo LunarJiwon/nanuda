@@ -23,9 +23,14 @@ function PostCard({ post, author }: { post: Post; author?: AppUser }) {
     >
       <span className="text-[17px] font-semibold tracking-[-0.01em] leading-[1.3]">{post.title}</span>
       <span className="text-[12.5px] text-[#77756c] leading-[1.55]">{post.excerpt}</span>
-      <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} size={16} />
-      <span className="text-[11.5px] text-[#b0aea6]">
-        {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
+      {/* mt-auto: the grid row stretches every card to its tallest sibling (CSS Grid's default
+          align-items:stretch), so without this a card whose excerpt happens to be short would
+          leave its byline+date sitting higher than a card with a longer excerpt in the same row. */}
+      <span className="mt-auto flex flex-wrap items-center gap-x-[10px] gap-y-[4px]">
+        <AuthorByline name={post.authorName} photoURL={author?.photoURL ?? null} size={16} />
+        <span className="text-[11.5px] text-[#b0aea6]">
+          {CATEGORY_LABEL[post.category]} · {formatDate(post.publishedAt)}
+        </span>
       </span>
     </Link>
   );

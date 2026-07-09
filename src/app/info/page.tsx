@@ -38,8 +38,8 @@ export default async function InfoPage() {
             >
               <span className="text-[22px] font-bold leading-[1.25] tracking-[-0.02em]">{post.title}</span>
               <span className="text-[14px] text-[#6b695f] leading-[1.6] max-w-[60ch]">{post.excerpt}</span>
-              <AuthorByline name={post.authorName} photoURL={authors.get(post.authorId)?.photoURL ?? null} />
               <span className="flex flex-wrap gap-[6px] items-center mt-[2px]">
+                <AuthorByline name={post.authorName} photoURL={authors.get(post.authorId)?.photoURL ?? null} />
                 {post.tags.map((tag) => (
                   <TagChip key={tag} tag={tag} />
                 ))}
