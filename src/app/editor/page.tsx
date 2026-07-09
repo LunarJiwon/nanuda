@@ -53,19 +53,35 @@ import { Spinner } from "@/components/Spinner";
 type FormatKind = "bold" | "italic" | "strike" | "code";
 
 /** Reconstructs editor blocks from an existing post for the "수정" flow — mirrors
- * buildPostPayload's own logic in reverse: only `daily` posts show their cover as a separate
- * figure rather than an inline block (see that function's doc comment for why `art` no longer
- * does), so only daily's cover is re-inserted here as its own leading image block. An `art` post
- * published *before* this changed already has its cover excluded from `content` — re-editing one
- * of those will show one fewer image than it actually has; re-saving fixes it going forward. */
+ * buildPostPayload's own logic in reverse. `daily`'s cover is a separate piece of state now (see
+ * that function), not a body block, so it's never reconstructed here — the caller populates
+ * `coverImageUrl` straight from `post.coverImageURL` instead. `quote` has no body at all going
+ * forward, so it always reloads as a single empty block regardless of what an older post (from
+ * before this change) happens to still have stored in `content`. */
 function blocksFromPost(post: PostForEdit): EditorBlock[] {
-  const showsCoverSeparately = post.category === "daily";
+  if (post.category === "quote") return [{ id: 1, type: "text", content: "" }];
   const bodyBlocks = markdownToBlocks(post.content);
-  const all: Omit<EditorBlock, "id">[] =
-    showsCoverSeparately && post.coverImageURL
-      ? [{ type: "image", content: "", imageUrl: post.coverImageURL }, ...bodyBlocks]
-      : bodyBlocks;
+  const all: Omit<EditorBlock, "id">[] = bodyBlocks.length ? bodyBlocks : [{ type: "text", content: "" }];
   return all.map((b, i) => ({ ...b, id: i + 1 }));
+}
+
+/** 예술 only — reads a just-picked file's real dimensions client-side (no server round-trip) so
+ * buildPostPayload can store an accurate thumbnail ratio instead of a hardcoded "1/1". Resolves
+ * null on any decode failure, which buildPostPayload treats the same as "never detected". */
+function detectImageRatio(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img.naturalWidth && img.naturalHeight ? `${img.naturalWidth}/${img.naturalHeight}` : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+    img.src = objectUrl;
+  });
 }
 
 export default function EditorPage() {
@@ -96,6 +112,14 @@ function EditorPageContent() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>([{ id: 1, type: "text", content: "" }]);
+  // 일상 only — an explicit cover image, replacing the old "whichever image block happens to be
+  // first in the body" convention (see buildPostPayload/blocksFromPost).
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  // 예술 only — the first inline image's real aspect ratio, detected client-side as soon as it's
+  // picked (see handleImageSelect) rather than shown via any picker UI. A ref since it's only ever
+  // read inside buildPostPayload, never rendered.
+  const imageRatiosRef = useRef<Map<number, string>>(new Map());
   const [menuFor, setMenuFor] = useState<number | "__end" | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   // Which half of the hovered row the cursor is over — determines whether the drop indicator (and
@@ -140,7 +164,7 @@ function EditorPageContent() {
       return;
     }
     isDirtyRef.current = true;
-  }, [title, subtitle, tags, blocks, category, isSubscriberOnly]);
+  }, [title, subtitle, tags, blocks, category, isSubscriberOnly, coverImageUrl]);
 
   // Covers a real page unload (refresh, close, typed URL, external link) — browsers show their
   // own generic "leave site?" wording here, ignoring any custom message.
@@ -266,6 +290,7 @@ function EditorPageContent() {
         setCategory(post.category);
         setTags(post.tags);
         setIsSubscriberOnly(post.visibility === "subscribers");
+        setCoverImageUrl(post.category === "daily" ? post.coverImageURL : null);
         setDraftId(editId);
         setOriginalStatus(post.status);
         const nextBlocks = blocksFromPost(post);
@@ -567,10 +592,18 @@ function EditorPageContent() {
   }
 
   async function handleImageSelect(blockId: number, file: File) {
-    const prevUrl = blocks.find((b) => b.id === blockId)?.imageUrl;
+    const block = blocks.find((b) => b.id === blockId);
+    const prevUrl = block?.imageUrl;
     setUploadingIds((s) => new Set(s).add(blockId));
     try {
-      const url = await uploadPostImage(tempPostId, file);
+      const [url] = await Promise.all([
+        uploadPostImage(tempPostId, file),
+        category === "art" && block?.type === "image"
+          ? detectImageRatio(file).then((ratio) => {
+              if (ratio) imageRatiosRef.current.set(blockId, ratio);
+            })
+          : Promise.resolve(),
+      ]);
       setBlocks((bs) =>
         bs.map((b) => (b.id === blockId ? { ...b, imageUrl: url, content: b.content || file.name } : b))
       );
@@ -590,36 +623,78 @@ function EditorPageContent() {
     }
   }
 
-  /** Shared by handlePublish/handleSaveDraft. `daily` posts show coverImageURL as its own figure
-   * above the body (see post/[id]/page.tsx) — leaving that same block's image markdown in the body
-   * too would render the picture twice, so it's excluded from the body there. `art` posts used to
-   * do the same (a single hero image, rest of the content below), but per feedback that hid every
-   * photo past the first one on a multi-photo art post — art now keeps all of its image blocks
-   * inline in the body, same as any other category; `coverImageURL` is still computed below
-   * (unaffected either way) purely as the thumbnail /art's list grid and profile cards use.
+  /** 일상 only — the explicit cover-image widget (see the JSX below), separate from any body
+   * block. Mirrors handleImageSelect's upload/replace-cleanup pattern above. */
+  async function handleCoverFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    const prevUrl = coverImageUrl;
+    setUploadingCover(true);
+    try {
+      const url = await uploadPostImage(tempPostId, file);
+      setCoverImageUrl(url);
+      if (prevUrl) deletePostImage(prevUrl).catch(() => {});
+    } catch (err) {
+      console.error("[editor] cover upload failed", err);
+      showToast("커버 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
+    } finally {
+      setUploadingCover(false);
+    }
+  }
+
+  function handleRemoveCover() {
+    if (coverImageUrl) deletePostImage(coverImageUrl).catch(() => {});
+    setCoverImageUrl(null);
+  }
+
+  /** Shared by handlePublish/handleSaveDraft. Per-category behavior:
+   * - `daily`: `coverImageURL` comes from the explicit cover-upload widget's own state
+   *   (coverImageUrl), not from scanning body blocks — the body is used as-is, nothing filtered
+   *   out of it. post/[id]/page.tsx renders this cover as its own figure above the body.
+   * - `quote`: no body at all — `bodyBlocks` is always empty, so `fullContent` comes out "" and
+   *   `deriveExcerpt` falls back to `subtitle`, which is exactly the "— 출처" line the detail page
+   *   renders. No cover image either (quote never shows one).
+   * - `info`/`art`: unchanged from before — the first inline image/circuit block doubles as the
+   *   thumbnail (`coverImageURL`) while still rendering inline in the body; `art` additionally
+   *   looks up that same block's detected real aspect ratio (see handleImageSelect/
+   *   detectImageRatio), falling back to a plain square if it was never detected (e.g. editing an
+   *   older post without re-picking its image).
    *
    * For a 구독자 전용 post, `payload.content` is deliberately left empty — the real body
    * (`fullContent`) gets written separately to posts/{id}/premium/body instead (see
    * PremiumPostBody.tsx and the firestore.rules gating on that subcollection), so the public post
    * doc this payload becomes can never leak subscriber-only text. `excerpt` is still derived from
-   * the full content, since that's meant to be a public teaser either way.
+   * the full content, since that's meant to be a public teaser either way. Quote posts never use
+   * 구독자 전용 (the toggle is hidden for that category — see the JSX below).
    */
   function buildPostPayload(
     status: "published" | "draft",
     authorId: string,
     authorName: string
   ): { payload: CreatePostInput; fullContent: string } {
-    const coverBlock =
-      blocks.find((b) => b.type === "image" && b.imageUrl) ??
-      blocks.find((b) => b.type === "circuit" && b.imageUrl) ??
-      null;
-    const coverImageURL = coverBlock?.imageUrl ?? null;
-    const showsCoverSeparately = category === "daily";
-    const bodyBlocks = showsCoverSeparately && coverBlock ? blocks.filter((b) => b.id !== coverBlock.id) : blocks;
+    let coverImageURL: string | null = null;
+    let bodyBlocks = blocks;
+    let ratio: string | undefined;
+
+    if (category === "daily") {
+      coverImageURL = coverImageUrl;
+    } else if (category === "quote") {
+      bodyBlocks = [];
+    } else {
+      const coverBlock =
+        blocks.find((b) => b.type === "image" && b.imageUrl) ??
+        blocks.find((b) => b.type === "circuit" && b.imageUrl) ??
+        null;
+      coverImageURL = coverBlock?.imageUrl ?? null;
+      if (category === "art") ratio = coverBlock ? imageRatiosRef.current.get(coverBlock.id) : undefined;
+    }
+
     const fullContent = blocksToMarkdown(bodyBlocks);
     const excerpt = deriveExcerpt(fullContent || subtitle || title);
     const readTime = computeReadTime(fullContent);
-    const visibility = isSubscriberOnly && profile?.subscriptionPrice ? "subscribers" : "public";
+    const visibility =
+      category !== "quote" && isSubscriberOnly && profile?.subscriptionPrice ? "subscribers" : "public";
     return {
       payload: {
         title: title.trim(),
@@ -634,7 +709,7 @@ function EditorPageContent() {
         readTime,
         status,
         visibility,
-        ...(category === "art" ? { ratio: "1/1" } : {}),
+        ...(category === "art" ? { ratio: ratio ?? "1/1" } : {}),
       },
       fullContent,
     };
@@ -760,7 +835,7 @@ function EditorPageContent() {
               </button>
             ))}
           </div>
-          {Boolean(profile?.subscriptionPrice) && (
+          {category !== "quote" && Boolean(profile?.subscriptionPrice) && (
             <label className="flex items-center gap-[6px] text-[12px] text-[#54524c] cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -869,7 +944,7 @@ function EditorPageContent() {
           onChange={(e) => setTitle(e.target.value)}
           onFocus={handleFocusField("title")}
           ref={registerRef("title")}
-          placeholder="제목 없음"
+          placeholder={category === "quote" ? "인용문을 입력하세요" : "제목 없음"}
           className="w-full font-bold text-[38px] leading-[1.15] tracking-[-0.035em] text-[#0e0e0e] mb-[4px] bg-transparent outline-none placeholder:text-[#c2c0b8]"
         />
         <input
@@ -877,7 +952,7 @@ function EditorPageContent() {
           onChange={(e) => setSubtitle(e.target.value)}
           onFocus={handleFocusField("sub")}
           ref={registerRef("sub")}
-          placeholder="한 줄 설명을 더해보세요"
+          placeholder={category === "quote" ? "출처 (예: 괴테, 파우스트)" : "한 줄 설명을 더해보세요"}
           maxLength={80}
           className="w-full text-[15px] text-[#8a887f] mb-[16px] bg-transparent outline-none placeholder:text-[#c2c0b8]"
         />
@@ -908,8 +983,82 @@ function EditorPageContent() {
           />
         </div>
 
+        {category === "daily" && (
+          <div className="mb-[26px]">
+            <label className="block text-[12px] text-[#8a887f] mb-[8px]">커버 이미지</label>
+            {coverImageUrl ? (
+              <div className="relative w-full max-w-[280px]" style={{ aspectRatio: "4/3" }}>
+                {/* User-uploaded content with unpredictable dimensions — plain <img> avoids next/image's required width/height. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverImageUrl}
+                  alt=""
+                  className={`w-full h-full object-cover rounded-[3px] border border-[#e5e3de] ${uploadingCover ? "opacity-40" : ""}`}
+                />
+                {uploadingCover && (
+                  <div className="absolute inset-0 flex items-center justify-center gap-[8px] bg-white/50 rounded-[3px] text-[11.5px] text-[#0e0e0e]">
+                    <Spinner />
+                    교체하는 중…
+                  </div>
+                )}
+                <div className="absolute top-[8px] right-[8px] flex gap-[6px]">
+                  <label
+                    className={`bg-white/90 border border-[#e0ded8] rounded-[3px] text-[11px] px-[8px] py-[4px] ${
+                      uploadingCover ? "opacity-50 pointer-events-none" : "cursor-pointer"
+                    }`}
+                  >
+                    교체
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingCover}
+                      className="hidden"
+                      onChange={handleCoverFileChange}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCover}
+                    disabled={uploadingCover}
+                    className="bg-white/90 border border-[#e0ded8] rounded-[3px] text-[11px] px-[8px] py-[4px] cursor-pointer disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                className={`flex items-center justify-center gap-[8px] w-full max-w-[280px] border border-dashed border-[#cfcdc6] rounded-[3px] text-[11.5px] text-[#a9a79e] ${
+                  uploadingCover ? "cursor-wait" : "cursor-pointer"
+                }`}
+                style={{
+                  aspectRatio: "4/3",
+                  background: "repeating-linear-gradient(45deg,#ecebe6 0 10px,#f4f3ef 10px 20px)",
+                }}
+              >
+                {uploadingCover ? (
+                  <>
+                    <Spinner />
+                    업로드 중…
+                  </>
+                ) : (
+                  "＋ 커버 이미지 추가"
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingCover}
+                  className="hidden"
+                  onChange={handleCoverFileChange}
+                />
+              </label>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col">
-          {blocks.map((block) => (
+          {category !== "quote" &&
+            blocks.map((block) => (
             <BlockRow
               key={block.id}
               block={block}
@@ -939,26 +1088,28 @@ function EditorPageContent() {
           ))}
         </div>
 
-        <div className="relative" data-editor-menu-zone={menuFor === "__end" ? "" : undefined}>
-          <div className="mt-[10px] flex items-center justify-between border-t border-[#eeece8] pt-[12px]">
-            <button
-              type="button"
-              onClick={() => toggleMenu("__end")}
-              className="border-none bg-none cursor-pointer text-[12px] text-[#a9a79e] p-0"
-            >
-              ＋ 블록 추가 <span className="text-[#d4d2ca]">/ 명령어</span>
-            </button>
-            <span className="text-[11px] text-[#c2c0b8]">
-              <span className="font-mono">{charCount}</span>자
-              {draftId && originalStatus !== "published" && " · 임시저장됨"}
-            </span>
-          </div>
-          {menuFor === "__end" && (
-            <div className="absolute left-0 top-full mt-[2px] z-20">
-              <BlockMenu onSelect={(type) => insertAfter("__end", type)} />
+        {category !== "quote" && (
+          <div className="relative" data-editor-menu-zone={menuFor === "__end" ? "" : undefined}>
+            <div className="mt-[10px] flex items-center justify-between border-t border-[#eeece8] pt-[12px]">
+              <button
+                type="button"
+                onClick={() => toggleMenu("__end")}
+                className="border-none bg-none cursor-pointer text-[12px] text-[#a9a79e] p-0"
+              >
+                ＋ 블록 추가 <span className="text-[#d4d2ca]">/ 명령어</span>
+              </button>
+              <span className="text-[11px] text-[#c2c0b8]">
+                <span className="font-mono">{charCount}</span>자
+                {draftId && originalStatus !== "published" && " · 임시저장됨"}
+              </span>
             </div>
-          )}
-        </div>
+            {menuFor === "__end" && (
+              <div className="absolute left-0 top-full mt-[2px] z-20">
+                <BlockMenu onSelect={(type) => insertAfter("__end", type)} />
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </>
   );
