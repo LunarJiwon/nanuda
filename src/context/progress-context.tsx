@@ -9,6 +9,12 @@ interface ProgressContextValue {
    * calls are additive (the bar stays visible until the *last* one finishes), so unrelated
    * in-flight saves don't hide each other's progress. */
   withProgress: <T,>(task: () => Promise<T>) => Promise<T>;
+  /** Raw start/stop pair for tasks with no single awaitable promise — a page navigation, for
+   * instance (see NavigationProgress.tsx), where "done" is signaled by the pathname changing
+   * rather than a call resolving. Same ref-counter as withProgress, so an in-flight navigation
+   * and an in-flight save compose correctly instead of one hiding the other's bar early. */
+  start: () => void;
+  stop: () => void;
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
@@ -17,21 +23,31 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false);
   const countRef = useRef(0);
 
-  const withProgress = useCallback(async <T,>(task: () => Promise<T>): Promise<T> => {
+  const start = useCallback(() => {
     countRef.current += 1;
     setActive(true);
-    try {
-      return await task();
-    } finally {
-      countRef.current -= 1;
-      if (countRef.current <= 0) {
-        countRef.current = 0;
-        setActive(false);
-      }
-    }
   }, []);
 
-  return <ProgressContext.Provider value={{ active, withProgress }}>{children}</ProgressContext.Provider>;
+  const stop = useCallback(() => {
+    countRef.current = Math.max(0, countRef.current - 1);
+    if (countRef.current === 0) setActive(false);
+  }, []);
+
+  const withProgress = useCallback(
+    async <T,>(task: () => Promise<T>): Promise<T> => {
+      start();
+      try {
+        return await task();
+      } finally {
+        stop();
+      }
+    },
+    [start, stop]
+  );
+
+  return (
+    <ProgressContext.Provider value={{ active, withProgress, start, stop }}>{children}</ProgressContext.Provider>
+  );
 }
 
 export function useProgress() {

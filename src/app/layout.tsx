@@ -9,6 +9,7 @@ import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { MobileTabs } from "@/components/MobileTabs";
 import { PageTransition } from "@/components/PageTransition";
 import { TopProgressBar } from "@/components/TopProgressBar";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import { Footer } from "@/components/Footer";
 import "katex/dist/katex.min.css";
 import "./globals.css";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <ProgressProvider>
                 <Header />
                 <TopProgressBar />
+                <NavigationProgress />
                 <EmailVerificationBanner />
                 {/* scrollbar-gutter reserves the scrollbar's width even on short pages, so navigating
                     between a scrolling page and a non-scrolling one doesn't shift centered content
